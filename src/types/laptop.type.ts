@@ -1,9 +1,14 @@
 export interface Laptop {
   id: number;
   name: string;
-  brand: string;
   price: number;
-  stock: number;
+  brand: string;
   category: string;
-  image_url: string;
+  cpu: string;
+  ram: string;
+  storage: string;
+  screen: string;
+  card: string;
+  os: string;
+  image: string;
 }

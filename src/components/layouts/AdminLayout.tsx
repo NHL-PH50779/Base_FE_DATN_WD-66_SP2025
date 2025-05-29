@@ -5,6 +5,8 @@ import {
   LaptopOutlined,
   TagsOutlined,
   AppstoreAddOutlined,
+  ShoppingCartOutlined,
+  UserOutlined, 
   LogoutOutlined,
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation } from 'react-router-dom';
@@ -36,6 +38,16 @@ const AdminLayout = () => {
       icon: <AppstoreAddOutlined />,
       label: <Link to="/admin/manufacturers">Hãng sản xuất</Link>,
     },
+    {
+      key: 'orders',
+      icon: <ShoppingCartOutlined />,
+      label: <Link to="/admin/orders">Đơn hàng</Link>, // ✅ Đơn hàng
+    },
+    {
+       key: 'users',
+       icon: <UserOutlined />,
+       label: <Link to="/admin/users">Người dùng</Link>,
+},
     {
       key: 'logout',
       icon: <LogoutOutlined />,
