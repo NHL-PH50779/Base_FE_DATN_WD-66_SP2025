@@ -25,12 +25,18 @@
     "vite": "^6.3.5"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^7.1.0",
+    "@mui/material": "^7.1.0",
+    "@mui/styled-engine-sc": "^7.1.0",
     "@types/react": "^18.3.21",
     "@types/react-dom": "^18.3.7",
     "axios": "^1.9.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.6.0",
+    "styled-components": "^6.1.18",
     "zustand": "^4.5.7"
   }
 }
