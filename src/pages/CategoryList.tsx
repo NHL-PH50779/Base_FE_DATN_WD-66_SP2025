@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Input, Space, Table, Modal, Form } from "antd";
+import { Button, Input, Space, Table, Modal, Form, Card } from "antd";
 import type { Category } from "../types/category.type";
 import { categoryApi } from "../api/category.api";
 
@@ -51,43 +51,83 @@ const CategoryList = () => {
   };
 
   return (
-    <div>
-      <h2>Quản lý Danh mục</h2>
-      <Space style={{ marginBottom: 16 }}>
-        <Input.Search placeholder="Tìm danh mục" onSearch={handleSearch} enterButton />
-        <Button type="primary" onClick={() => { form.resetFields(); setEditing(null); setOpen(true); }}>
+    <Card
+      title={<span style={{ color: "#1890ff", fontWeight: 700, fontSize: 22 }}>Quản lý Danh mục</span>}
+      extra={
+        <Button
+          type="primary"
+          style={{ background: "linear-gradient(90deg,#1890ff 0%,#52c41a 100%)", border: "none" }}
+          onClick={() => { form.resetFields(); setEditing(null); setOpen(true); }}
+        >
           Thêm danh mục
         </Button>
+      }
+      style={{
+        background: "linear-gradient(135deg, #f0f5ff 0%, #e6fffb 100%)",
+        borderRadius: 16,
+        boxShadow: "0 4px 24px rgba(24,144,255,0.08)",
+        marginBottom: 24,
+      }}
+      headStyle={{
+        borderRadius: "16px 16px 0 0",
+        background: "#fff",
+      }}
+    >
+      <Space style={{ marginBottom: 16 }}>
+        <Input.Search
+          placeholder="Tìm danh mục"
+          onSearch={handleSearch}
+          enterButton
+          style={{ borderRadius: 8, borderColor: "#1890ff" }}
+        />
       </Space>
       <Table
         dataSource={filtered}
         rowKey="id"
         columns={[
-          { title: "Tên danh mục", dataIndex: "name" },
-          { title: "Mô tả", dataIndex: "description" },
+          { title: <span style={{ color: "#1890ff" }}>Tên danh mục</span>, dataIndex: "name" },
+          { title: <span style={{ color: "#1890ff" }}>Mô tả</span>, dataIndex: "description" },
           {
-            title: "Hành động",
+            title: <span style={{ color: "#1890ff" }}>Hành động</span>,
             render: (_, record) => (
               <Space>
-                <Button onClick={() => handleEdit(record)}>Sửa</Button>
-                <Button danger onClick={() => handleDelete(record.id)}>Xoá</Button>
+                <Button onClick={() => handleEdit(record)} type="primary" ghost>
+                  Sửa
+                </Button>
+                <Button danger onClick={() => handleDelete(record.id)}>
+                  Xoá
+                </Button>
               </Space>
             ),
           },
         ]}
+        pagination={{ pageSize: 5 }}
+        style={{ borderRadius: 12, overflow: "hidden" }}
       />
 
-      <Modal open={open} onCancel={() => setOpen(false)} onOk={handleSubmit} title={editing ? "Sửa danh mục" : "Thêm danh mục"}>
+      <Modal
+        open={open}
+        onCancel={() => setOpen(false)}
+        onOk={handleSubmit}
+        title={
+          <span style={{ color: "#1890ff", fontWeight: 600 }}>
+            {editing ? "Sửa danh mục" : "Thêm danh mục"}
+          </span>
+        }
+        okButtonProps={{ style: { background: "#52c41a", border: "none" } }}
+        cancelButtonProps={{ style: { borderRadius: 8 } }}
+        bodyStyle={{ background: "#f0f5ff", borderRadius: 12 }}
+      >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="Tên danh mục" rules={[{ required: true }]}>
-            <Input />
+          <Form.Item name="name" label={<span style={{ color: "#1890ff" }}>Tên danh mục</span>} rules={[{ required: true }]}>
+            <Input style={{ borderRadius: 8 }} />
           </Form.Item>
-          <Form.Item name="description" label="Mô tả">
-            <Input />
+          <Form.Item name="description" label={<span style={{ color: "#1890ff" }}>Mô tả</span>}>
+            <Input style={{ borderRadius: 8 }} />
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </Card>
   );
 };
 

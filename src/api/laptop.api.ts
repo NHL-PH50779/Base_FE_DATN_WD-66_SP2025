@@ -1,7 +1,7 @@
 import type { Laptop } from "../types/product";
 
 const mockLaptops: Laptop[] = [
-  {
+    {
     id: 1,
     name: "Laptop Dell XPS 13",
     price: 35000000,
@@ -14,6 +14,7 @@ const mockLaptops: Laptop[] = [
     card: "Intel Iris Xe",
     os: "Windows 11",
     image: "https://via.placeholder.com/150",
+    isAvailable: true,
   },
   {
     id: 2,
@@ -28,6 +29,8 @@ const mockLaptops: Laptop[] = [
     card: "Apple GPU",
     os: "macOS",
     image: "https://via.placeholder.com/150",
+    isAvailable: true,
+
   },
   {
     id: 3,
@@ -42,6 +45,7 @@ const mockLaptops: Laptop[] = [
     card: "NVIDIA RTX 3060",
     os: "Windows 11",
     image: "https://via.placeholder.com/150",
+    isAvailable: false,
   },
   {
     id: 4,
@@ -56,6 +60,7 @@ const mockLaptops: Laptop[] = [
     card: "NVIDIA RTX 3050",
     os: "Windows 11",
     image: "https://via.placeholder.com/150",
+    isAvailable: true,
   },
   {
     id: 5,
@@ -70,6 +75,7 @@ const mockLaptops: Laptop[] = [
     card: "Intel Iris Xe",
     os: "Windows 11",
     image: "https://via.placeholder.com/150",
+    isAvailable: true,
   },
 ];
 

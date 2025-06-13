@@ -49,6 +49,11 @@ const AdminLayout = () => {
        label: <Link to="/admin/users">Người dùng</Link>,
 },
     {
+      key: 'variants',
+      icon: <LaptopOutlined />,
+      label: <Link to="/admin/variants">Biến thể</Link>,
+    },
+    {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: <span>Đăng xuất</span>,

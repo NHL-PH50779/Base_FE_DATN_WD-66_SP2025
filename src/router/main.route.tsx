@@ -6,6 +6,7 @@ import CategoryList from "../pages/CategoryList";
 import ManufacturerList from "../pages/ManufacturerList";
 import OrderList from "../pages/OrderList";
 import UserList from "../pages/UserList";
+import Variant from "../pages/Variant";
 
 const routes = [
   {
@@ -19,6 +20,7 @@ const routes = [
       { path: "manufacturers", element: <ManufacturerList /> },
       { path: "orders", element: <OrderList /> },
       { path: "users", element: <UserList /> },
+      { path: "variants", element: <Variant /> },
     ],
   },
 ];
