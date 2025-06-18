@@ -3,41 +3,36 @@ import axios, {
   type AxiosRequestConfig,
   type AxiosResponse,
 } from "axios";
-// import { NEXT_PUBLIC_API_URL, NEXT_PUBLIC_AUTH_API_URL } from "./env";
-// import { clearUserInfoAndToken, getCommonStateFromLocalStorage } from "./utils";
 
 interface CustomAxiosRequestConfig extends AxiosRequestConfig {
   isAuthApi?: boolean;
 }
 
-const axiosInstance = axios.create({
-  baseURL: process.env.PUBLIC_API_URL,
+// Cấu hình API URL cho Laravel backend
+const API_URL = "http://127.0.0.1:8000/api";
+
+export const axiosInstance = axios.create({
+  baseURL: API_URL,
   timeout: 20000,
   headers: {
     "Content-Type": "application/json",
+    "Accept": "application/json", // Laravel API thường yêu cầu header này
   },
 });
 
+// Xử lý response
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error) => {
-    // log error ra để kiểm tra rồi sử lý
-
+    console.error("API Error:", error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
 
+// Xử lý request
 axiosInstance.interceptors.request.use(
   (config) => {
-    // const token = getCommonStateFromLocalStorage()?.token;
-    // if (token && config.headers) {
-    //   config.headers.set(
-    //     "Authorization",
-    //     (config as CustomAxiosRequestConfig).isAuthApi
-    //       ? `Bearer ${token}`
-    //       : token
-    //   );
-    // }
+    // Có thể thêm token xác thực ở đây nếu cần
     return config;
   },
   (error: AxiosError) => {

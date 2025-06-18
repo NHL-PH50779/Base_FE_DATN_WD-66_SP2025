@@ -1,12 +1,17 @@
-import { Navigate, Route } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import AdminLayout from "../components/layouts/AdminLayout";
-import Dashboard from "../pages/Dashboard"; // THÊM
-import ListLaptop from "../pages/LaptopList";
-import CategoryList from "../pages/CategoryList";
-import ManufacturerList from "../pages/ManufacturerList";
-import OrderList from "../pages/OrderList";
+import Dashboard from "../pages/Dashboard";
 import UserList from "../pages/UserList";
-import Variant from "../pages/Variant";
+
+// Import từ modules
+import { OrderList } from "../modules/orders";
+import { 
+  ProductList, 
+  CategoryList, 
+  BrandList,
+  ProductCreate,
+  ProductEdit
+} from "../modules/products";
 
 const routes = [
   {
@@ -15,15 +20,33 @@ const routes = [
     children: [
       { index: true, element: <Navigate to="dashboard" /> },
       { path: "dashboard", element: <Dashboard /> },
-      { path: "laptops", element: <ListLaptop /> }, 
+      
+      // Quản lý sản phẩm
+      { path: "products", element: <ProductList /> },
+      { path: "products/create", element: <ProductCreate /> },
+      { path: "products/edit/:id", element: <ProductEdit /> },
       { path: "categories", element: <CategoryList /> },
-      { path: "manufacturers", element: <ManufacturerList /> },
+      { path: "brands", element: <BrandList /> },
+      
+      // Quản lý đơn hàng
       { path: "orders", element: <OrderList /> },
+      
+      // Quản lý người dùng
       { path: "users", element: <UserList /> },
-      { path: "variants", element: <Variant /> },
     ],
   },
+  
+  // Redirect root to admin dashboard
+  {
+    path: "/",
+    element: <Navigate to="/admin/dashboard" />,
+  },
+  
+  // Catch all - redirect to admin dashboard
+  {
+    path: "*",
+    element: <Navigate to="/admin/dashboard" />,
+  },
 ];
-
 
 export default routes;
