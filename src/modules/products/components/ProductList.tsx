@@ -3,6 +3,8 @@ import { Table, Button, Space, Tag, Input, Modal, message, Card, Switch } from "
 import { EditOutlined, DeleteOutlined, PlusOutlined, UndoOutlined, SearchOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getAllProducts, deleteProduct, restoreProduct, toggleActiveProduct, getTrashedProducts, searchProducts } from "../services/product.service";
+import { getAllBrands } from "../services/brand.service";
+import { getAllCategories } from "../services/category.service";
 import type { Product } from "../types/product.type";
 
 export default function ProductList() {
@@ -12,27 +14,36 @@ export default function ProductList() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const navigate = useNavigate();
 
-  const fetchProducts = async (trashed = false) => {
+  const fetchAllData = async (trashed = false) => {
     setLoading(true);
     try {
-      const response = trashed ? await getTrashedProducts() : await getAllProducts();
-      console.log("Products response:", response); // Debugging
-      setProducts(response.data || []);
+      // Call products API first
+      const productsResponse = trashed ? await getTrashedProducts() : await getAllProducts();
+      console.log("Products response:", productsResponse);
+      setProducts(productsResponse.data || []);
+      
+      // Call other APIs (không cần attributes vì cần auth)
+      await Promise.all([
+        getAllBrands(),
+        getAllCategories()
+      ]);
+      
+      console.log("All APIs called successfully");
     } catch (error) {
-      console.error("Error fetching products:", error);
-      message.error("Không thể tải danh sách sản phẩm");
+      console.error("Error fetching data:", error);
+      message.error("Không thể tải dữ liệu");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProducts(showTrashed);
+    fetchAllData(showTrashed);
   }, [showTrashed]);
 
   const handleSearch = async () => {
     if (!searchKeyword.trim()) {
-      fetchProducts(showTrashed);
+      fetchAllData(showTrashed);
       return;
     }
     
@@ -59,7 +70,7 @@ export default function ProductList() {
         try {
           await deleteProduct(id);
           message.success("Xóa sản phẩm thành công");
-          fetchProducts(showTrashed);
+          fetchAllData(showTrashed);
         } catch (error) {
           console.error("Error deleting product:", error);
           message.error("Lỗi khi xóa sản phẩm");
@@ -72,7 +83,7 @@ export default function ProductList() {
     try {
       await restoreProduct(id);
       message.success("Khôi phục sản phẩm thành công");
-      fetchProducts(showTrashed);
+      fetchAllData(showTrashed);
     } catch (error) {
       console.error("Error restoring product:", error);
       message.error("Lỗi khi khôi phục sản phẩm");
@@ -83,7 +94,7 @@ export default function ProductList() {
     try {
       await toggleActiveProduct(id);
       message.success(`Đã ${currentStatus ? 'tắt' : 'bật'} sản phẩm`);
-      fetchProducts(showTrashed);
+      fetchAllData(showTrashed);
     } catch (error) {
       console.error("Error toggling product status:", error);
       message.error("Lỗi khi thay đổi trạng thái sản phẩm");

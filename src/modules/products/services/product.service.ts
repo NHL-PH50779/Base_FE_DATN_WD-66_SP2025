@@ -4,24 +4,23 @@ import type { Product } from "../types/product.type";
 export const getAllProducts = async () => {
   try {
     const response = await productApi.getAll();
-    // Kiểm tra cấu trúc response từ Laravel API
-    if (response.data && response.data.data) {
+    // Đảm bảo trả về array cho Table component
+    if (response.data && response.data.data && Array.isArray(response.data.data)) {
       return { data: response.data.data };
     } else if (Array.isArray(response.data)) {
       return { data: response.data };
     } else {
-      return response;
+      return { data: [] }; // Trả về array rỗng nếu không có dữ liệu
     }
   } catch (error) {
     console.error("Error fetching products:", error);
-    throw error;
+    return { data: [] }; // Trả về array rỗng khi có lỗi
   }
 };
 
 export const getProductById = async (id: number) => {
   try {
     const response = await productApi.getById(id);
-    // Kiểm tra cấu trúc response từ Laravel API
     if (response.data && response.data.data) {
       return { data: response.data.data };
     } else {
@@ -66,34 +65,32 @@ export const deleteProduct = async (id: number) => {
 export const searchProducts = async (keyword: string) => {
   try {
     const response = await productApi.search(keyword);
-    // Kiểm tra cấu trúc response từ Laravel API
-    if (response.data && response.data.data) {
+    if (response.data && response.data.data && Array.isArray(response.data.data)) {
       return { data: response.data.data };
     } else if (Array.isArray(response.data)) {
       return { data: response.data };
     } else {
-      return response;
+      return { data: [] };
     }
   } catch (error) {
     console.error(`Error searching products with keyword "${keyword}":`, error);
-    throw error;
+    return { data: [] };
   }
 };
 
 export const getTrashedProducts = async () => {
   try {
     const response = await productApi.getTrashed();
-    // Kiểm tra cấu trúc response từ Laravel API
-    if (response.data && response.data.data) {
+    if (response.data && response.data.data && Array.isArray(response.data.data)) {
       return { data: response.data.data };
     } else if (Array.isArray(response.data)) {
       return { data: response.data };
     } else {
-      return response;
+      return { data: [] };
     }
   } catch (error) {
     console.error("Error fetching trashed products:", error);
-    throw error;
+    return { data: [] };
   }
 };
 
