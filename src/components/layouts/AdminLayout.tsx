@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Menu, Avatar } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, message } from 'antd';
 import {
   DashboardOutlined,
   TagsOutlined,
@@ -8,9 +8,12 @@ import {
   ShopOutlined,
   SettingOutlined,
   TrademarkOutlined,
+  LogoutOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { MenuProps } from 'antd';
+import { authService } from '../../services/auth.service';
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -18,17 +21,43 @@ type MenuItem = Required<MenuProps>['items'][number];
 
 const AdminLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const user = authService.getUser();
   
   const selectedKey = location.pathname.split('/')[2] || 'dashboard';
   const getOpenKeys = () => {
     if (selectedKey === 'dashboard') return ['dashboard'];
-    if (['products', 'categories', 'brands'].includes(selectedKey)) return ['product-management'];
+    if (['products', 'categories', 'brands', 'attributes'].includes(selectedKey)) return ['product-management'];
     if (selectedKey === 'orders') return ['order-management'];
     if (selectedKey === 'users') return ['user-management'];
     return [];
   };
   
   const openKeys = getOpenKeys();
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      message.success('Đăng xuất thành công');
+      navigate('/login');
+    } catch (error) {
+      message.error('Lỗi khi đăng xuất');
+    }
+  };
+
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Thông tin cá nhân',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Đăng xuất',
+      onClick: handleLogout,
+    },
+  ];
 
   const menuItems: MenuItem[] = [
     {
@@ -55,6 +84,11 @@ const AdminLayout = () => {
           key: 'brands',
           icon: <TrademarkOutlined />,
           label: <Link to="/admin/brands">Thương hiệu</Link>,
+        },
+        {
+          key: 'attributes',
+          icon: <AppstoreOutlined />,
+          label: <Link to="/admin/attributes">Thuộc tính</Link>,
         },
       ],
     },
@@ -126,7 +160,7 @@ const AdminLayout = () => {
         }}>
           <h1 style={{ margin: 0, fontSize: 20 }}>Hệ thống quản trị</h1>
           
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -137,9 +171,9 @@ const AdminLayout = () => {
                 style={{ backgroundColor: '#1890ff', marginRight: 8 }}
                 icon={<UserOutlined />}
               />
-              <span>Admin</span>
+              <span>{user?.name || 'Admin'}</span>
             </div>
-          </div>
+          </Dropdown>
         </Header>
 
         <Content style={{ margin: '16px' }}>

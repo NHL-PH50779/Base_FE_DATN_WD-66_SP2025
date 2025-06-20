@@ -11,7 +11,6 @@ import type { Attribute, AttributeValue } from '../types/attribute.type';
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { TabPane } = Tabs;
 
 interface ProductFormProps {
   isEdit?: boolean;
@@ -30,7 +29,7 @@ interface ProductVariant {
   price: number;
   stock: number;
   is_active: boolean;
-  color?: string; // Thêm trường màu sắc
+  color?: string;
   attributes?: VariantAttribute[];
 }
 
@@ -68,7 +67,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         
         setBrands(brandsRes.data || []);
         setCategories(categoriesRes.data || []);
-        setAttributes(attributesRes.data || []);
+        setAttributes(Array.isArray(attributesRes.data) ? attributesRes.data : []);
 
         // If editing, fetch product details
         if (isEdit && id) {
@@ -99,7 +98,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
                 status: 'done',
                 url: product.thumbnail.startsWith('http') 
                   ? product.thumbnail 
-                  : `http://127.0.0.1:8000/storage/${product.thumbnail}`
+                  : `http://localhost/storage/products/${product.thumbnail}`
               }]);
             }
           }
@@ -115,83 +114,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
     fetchData();
   }, [isEdit, id, form]);
 
-  // Xử lý thêm thuộc tính mới
-  const handleAddAttribute = async () => {
-    if (!newAttributeName.trim()) {
-      message.error("Vui lòng nhập tên thuộc tính");
-      return;
-    }
-
-    const validValues = newAttributeValues.filter(v => v.trim() !== '');
-    if (validValues.length === 0) {
-      message.error("Vui lòng nhập ít nhất một giá trị thuộc tính");
-      return;
-    }
-
-    try {
-      // Tạo thuộc tính mới
-      const attributeRes = await createAttribute({ name: newAttributeName });
-      const newAttribute = attributeRes.data;
-      
-      if (newAttribute && newAttribute.id) {
-        // Tạo các giá trị thuộc tính
-        const valuePromises = validValues.map(value => 
-          createAttributeValue({ 
-            attribute_id: newAttribute.id!, 
-            value 
-          })
-        );
-        
-        await Promise.all(valuePromises);
-        
-        // Cập nhật danh sách thuộc tính
-        const attributesRes = await getAllAttributes();
-        setAttributes(attributesRes.data || []);
-        
-        // Reset form
-        setNewAttributeName('');
-        setNewAttributeValues(['']);
-        setAttributeModalVisible(false);
-        
-        message.success("Thêm thuộc tính thành công");
-      }
-    } catch (error) {
-      console.error("Error adding attribute:", error);
-      message.error("Lỗi khi thêm thuộc tính");
-    }
-  };
-
-  // Xử lý thêm giá trị thuộc tính
-  const handleAddAttributeValue = () => {
-    setNewAttributeValues([...newAttributeValues, '']);
-  };
-
-  // Xử lý xóa giá trị thuộc tính
-  const handleRemoveAttributeValue = (index: number) => {
-    const newValues = [...newAttributeValues];
-    newValues.splice(index, 1);
-    setNewAttributeValues(newValues);
-  };
-
-  // Xử lý thay đổi giá trị thuộc tính
-  const handleAttributeValueChange = (index: number, value: string) => {
-    const newValues = [...newAttributeValues];
-    newValues[index] = value;
-    setNewAttributeValues(newValues);
-  };
-
   // Xử lý chọn thuộc tính
   const handleSelectAttribute = (attribute_id: number, values: number[]) => {
-    // Kiểm tra xem thuộc tính đã được chọn chưa
     const existingIndex = selectedAttributes.findIndex(a => a.attribute_id === attribute_id);
     
     if (existingIndex >= 0) {
-      // Cập nhật giá trị cho thuộc tính đã chọn
       const newSelectedAttributes = [...selectedAttributes];
       newSelectedAttributes[existingIndex].values = values;
       setSelectedAttributes(newSelectedAttributes);
     } else {
-      // Thêm thuộc tính mới vào danh sách đã chọn
       setSelectedAttributes([...selectedAttributes, { attribute_id, values }]);
     }
   };
@@ -267,11 +198,58 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
     });
 
     setVariants([...variants, ...newVariants]);
+    message.success(`Đã tạo ${newVariants.length} biến thể`);
+  };
+
+  // Xử lý thêm thuộc tính mới
+  const handleAddAttribute = async () => {
+    if (!newAttributeName.trim()) {
+      message.error("Vui lòng nhập tên thuộc tính");
+      return;
+    }
+
+    const validValues = newAttributeValues.filter(v => v.trim() !== '');
+    if (validValues.length === 0) {
+      message.error("Vui lòng nhập ít nhất một giá trị thuộc tính");
+      return;
+    }
+
+    try {
+      // Tạo thuộc tính mới
+      const attributeRes = await createAttribute({ name: newAttributeName });
+      const newAttribute = attributeRes.data;
+      
+      if (newAttribute && newAttribute.id) {
+        // Tạo các giá trị thuộc tính
+        const valuePromises = validValues.map(value => 
+          createAttributeValue({ 
+            attribute_id: newAttribute.id!, 
+            value 
+          })
+        );
+        
+        await Promise.all(valuePromises);
+        
+        // Cập nhật danh sách thuộc tính
+        const attributesRes = await getAllAttributes();
+        setAttributes(Array.isArray(attributesRes.data) ? attributesRes.data : []);
+        
+        // Reset form
+        setNewAttributeName('');
+        setNewAttributeValues(['']);
+        setAttributeModalVisible(false);
+        
+        message.success("Thêm thuộc tính thành công");
+      }
+    } catch (error) {
+      console.error("Error adding attribute:", error);
+      message.error("Lỗi khi thêm thuộc tính");
+    }
   };
 
   const handleAddVariant = () => {
     setVariants([...variants, {
-      id: Date.now(), // Temporary ID
+      id: Date.now(),
       sku: '',
       price: 0,
       stock: 0,
@@ -294,29 +272,41 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
     try {
       setLoading(true);
       
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('name', values.name);
-      formData.append('description', values.description || '');
-      formData.append('brand_id', values.brand_id);
-      formData.append('category_id', values.category_id);
-      formData.append('is_active', values.is_active ? '1' : '0');
+      // Tạo object data thay vì FormData để tránh lỗi "không có dữ liệu"
+      const productData: any = {
+        name: values.name,
+        description: values.description || '',
+        brand_id: values.brand_id,
+        category_id: values.category_id,
+        is_active: values.is_active ? 1 : 0,
+      };
       
-      // Add thumbnail if available
-      if (fileList.length > 0 && fileList[0].originFileObj) {
-        formData.append('thumbnail', fileList[0].originFileObj);
-      }
-      
-      // Add variants
+      // Thêm variants nếu có
       if (variants.length > 0) {
-        formData.append('variants', JSON.stringify(variants));
+        productData.variants = variants;
       }
+      
+      console.log('Submitting product data:', productData);
       
       if (isEdit && id) {
-        await updateProduct(parseInt(id), formData);
+        await updateProduct(parseInt(id), productData);
         message.success('Cập nhật sản phẩm thành công');
       } else {
-        await createProduct(formData);
+        // Với create vẫn dùng FormData nếu có file
+        if (fileList.length > 0 && fileList[0].originFileObj) {
+          const formData = new FormData();
+          Object.keys(productData).forEach(key => {
+            if (key === 'variants') {
+              formData.append(key, JSON.stringify(productData[key]));
+            } else {
+              formData.append(key, productData[key]);
+            }
+          });
+          formData.append('thumbnail', fileList[0].originFileObj);
+          await createProduct(formData);
+        } else {
+          await createProduct(productData);
+        }
         message.success('Thêm sản phẩm thành công');
       }
       
@@ -362,9 +352,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         attributes && attributes.length > 0 ? (
           <div>
             {attributes.map((attr, index) => (
-              <Tag key={index} color="blue">
+              <span key={index} style={{ 
+                display: 'inline-block', 
+                background: '#f0f0f0', 
+                padding: '2px 8px', 
+                margin: '2px', 
+                borderRadius: '4px',
+                fontSize: '12px'
+              }}>
                 {attr.attribute_name}: {attr.value}
-              </Tag>
+              </span>
             ))}
           </div>
         ) : '-'
@@ -419,6 +416,65 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
           icon={<DeleteOutlined />}
           onClick={() => handleRemoveVariant(record.id)}
         />
+      )
+    }
+  ];
+
+  const tabItems = [
+    {
+      key: '1',
+      label: 'Tạo biến thể từ thuộc tính',
+      children: (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h3>Chọn thuộc tính</h3>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={() => setAttributeModalVisible(true)}
+            >
+              Thêm thuộc tính mới
+            </Button>
+          </div>
+          
+          {attributes.map(attribute => (
+            <div key={attribute.id} style={{ marginBottom: 16 }}>
+              <h4>{attribute.name}</h4>
+              <Select
+                mode="multiple"
+                style={{ width: '100%' }}
+                placeholder={`Chọn giá trị cho ${attribute.name}`}
+                onChange={(values) => handleSelectAttribute(attribute.id!, values)}
+              >
+                {attribute.values?.map(value => (
+                  <Option key={value.id} value={value.id!}>{value.value}</Option>
+                ))}
+              </Select>
+            </div>
+          ))}
+          
+          <Button 
+            type="primary" 
+            onClick={generateVariants} 
+            style={{ marginTop: 16 }}
+          >
+            Tạo biến thể
+          </Button>
+        </div>
+      )
+    },
+    {
+      key: '2',
+      label: 'Thêm biến thể thủ công',
+      children: (
+        <Button 
+          type="dashed" 
+          onClick={handleAddVariant} 
+          icon={<PlusOutlined />}
+          style={{ marginBottom: 16 }}
+        >
+          Thêm biến thể
+        </Button>
       )
     }
   ];
@@ -517,57 +573,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
 
         <Divider orientation="left">Biến thể sản phẩm</Divider>
         
-        <Tabs defaultActiveKey="1">
-          <TabPane tab="Tạo biến thể từ thuộc tính" key="1">
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h3>Chọn thuộc tính</h3>
-                <Button 
-                  type="primary" 
-                  icon={<PlusOutlined />} 
-                  onClick={() => setAttributeModalVisible(true)}
-                >
-                  Thêm thuộc tính mới
-                </Button>
-              </div>
-              
-              {attributes.map(attribute => (
-                <div key={attribute.id} style={{ marginBottom: 16 }}>
-                  <h4>{attribute.name}</h4>
-                  <Select
-                    mode="multiple"
-                    style={{ width: '100%' }}
-                    placeholder={`Chọn giá trị cho ${attribute.name}`}
-                    onChange={(values) => handleSelectAttribute(attribute.id!, values)}
-                  >
-                    {attribute.values?.map(value => (
-                      <Option key={value.id} value={value.id!}>{value.value}</Option>
-                    ))}
-                  </Select>
-                </div>
-              ))}
-              
-              <Button 
-                type="primary" 
-                onClick={generateVariants} 
-                style={{ marginTop: 16 }}
-              >
-                Tạo biến thể
-              </Button>
-            </div>
-          </TabPane>
-          
-          <TabPane tab="Thêm biến thể thủ công" key="2">
-            <Button 
-              type="dashed" 
-              onClick={handleAddVariant} 
-              icon={<PlusOutlined />}
-              style={{ marginBottom: 16 }}
-            >
-              Thêm biến thể
-            </Button>
-          </TabPane>
-        </Tabs>
+        <Tabs defaultActiveKey="1" items={tabItems} />
         
         <div style={{ marginTop: 16 }}>
           <Table
@@ -592,7 +598,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         </Form.Item>
       </Form>
       
-      {/* Modal thêm thuộc tính mới */}
       <Modal
         title="Thêm thuộc tính mới"
         open={attributeModalVisible}
@@ -602,10 +607,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         cancelText="Hủy"
       >
         <Form layout="vertical">
-          <Form.Item
-            label="Tên thuộc tính"
-            required
-          >
+          <Form.Item label="Tên thuộc tính" required>
             <Input 
               placeholder="Nhập tên thuộc tính" 
               value={newAttributeName}
@@ -613,29 +615,34 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
             />
           </Form.Item>
           
-          <Form.Item
-            label="Giá trị thuộc tính"
-            required
-          >
+          <Form.Item label="Giá trị thuộc tính" required>
             {newAttributeValues.map((value, index) => (
               <div key={index} style={{ display: 'flex', marginBottom: 8 }}>
                 <Input
                   placeholder="Nhập giá trị thuộc tính"
                   value={value}
-                  onChange={(e) => handleAttributeValueChange(index, e.target.value)}
+                  onChange={(e) => {
+                    const newValues = [...newAttributeValues];
+                    newValues[index] = e.target.value;
+                    setNewAttributeValues(newValues);
+                  }}
                   style={{ marginRight: 8 }}
                 />
                 {newAttributeValues.length > 1 && (
                   <Button
                     icon={<MinusCircleOutlined />}
-                    onClick={() => handleRemoveAttributeValue(index)}
+                    onClick={() => {
+                      const newValues = [...newAttributeValues];
+                      newValues.splice(index, 1);
+                      setNewAttributeValues(newValues);
+                    }}
                   />
                 )}
               </div>
             ))}
             <Button
               type="dashed"
-              onClick={handleAddAttributeValue}
+              onClick={() => setNewAttributeValues([...newAttributeValues, ''])}
               icon={<PlusCircleOutlined />}
               style={{ width: '100%' }}
             >

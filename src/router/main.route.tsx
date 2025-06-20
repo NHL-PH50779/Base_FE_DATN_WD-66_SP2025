@@ -2,6 +2,9 @@ import { Navigate } from "react-router-dom";
 import AdminLayout from "../components/layouts/AdminLayout";
 import Dashboard from "../pages/Dashboard";
 import UserList from "../pages/UserList";
+import Login from "../components/auth/Login";
+import Register from "../components/auth/Register";
+import ProtectedRoute from "../components/auth/ProtectedRoute";
 
 // Import từ modules
 import { OrderList } from "../modules/orders";
@@ -10,13 +13,29 @@ import {
   CategoryList, 
   BrandList,
   ProductCreate,
-  ProductEdit
+  ProductEdit,
+  AttributeList
 } from "../modules/products";
 
 const routes = [
+  // Public routes
+  {
+    path: "/login",
+    element: <Login />,
+  },
+  {
+    path: "/register", 
+    element: <Register />,
+  },
+  
+  // Admin routes (cần admin role)
   {
     path: "/admin",
-    element: <AdminLayout />,
+    element: (
+      <ProtectedRoute requireAdmin={true}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <Navigate to="dashboard" /> },
       { path: "dashboard", element: <Dashboard /> },
@@ -27,6 +46,7 @@ const routes = [
       { path: "products/edit/:id", element: <ProductEdit /> },
       { path: "categories", element: <CategoryList /> },
       { path: "brands", element: <BrandList /> },
+      { path: "attributes", element: <AttributeList /> },
       
       // Quản lý đơn hàng
       { path: "orders", element: <OrderList /> },
@@ -36,16 +56,30 @@ const routes = [
     ],
   },
   
-  // Redirect root to admin dashboard
+  // Client routes (chỉ cần đăng nhập)
   {
-    path: "/",
-    element: <Navigate to="/admin/dashboard" />,
+    path: "/client",
+    element: (
+      <ProtectedRoute>
+        <div>Client Dashboard</div>
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="dashboard" /> },
+      { path: "dashboard", element: <div>Client Dashboard</div> },
+    ],
   },
   
-  // Catch all - redirect to admin dashboard
+  // Redirect root to login
+  {
+    path: "/",
+    element: <Navigate to="/login" />,
+  },
+  
+  // Catch all
   {
     path: "*",
-    element: <Navigate to="/admin/dashboard" />,
+    element: <Navigate to="/login" />,
   },
 ];
 

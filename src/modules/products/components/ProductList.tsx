@@ -9,25 +9,45 @@ import type { Product } from "../types/product.type";
 
 export default function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]); // Lưu tất cả sản phẩm
   const [loading, setLoading] = useState(false);
   const [showTrashed, setShowTrashed] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [brands, setBrands] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const navigate = useNavigate();
 
   const fetchAllData = async (trashed = false) => {
     setLoading(true);
     try {
       // Call products API first
-      const productsResponse = trashed ? await getTrashedProducts() : await getAllProducts();
-      console.log("Products response:", productsResponse);
-      setProducts(productsResponse.data || []);
+      let productsResponse;
+      if (trashed) {
+        try {
+          productsResponse = await getTrashedProducts();
+        } catch (error) {
+          console.log("Trashed products API not available, showing empty list");
+          productsResponse = { data: [] };
+        }
+      } else {
+        productsResponse = await getAllProducts();
+      }
       
-      // Call other APIs (không cần attributes vì cần auth)
-      await Promise.all([
+      console.log("Products response:", productsResponse);
+      const productData = productsResponse.data || [];
+      setProducts(productData);
+      setAllProducts(productData); // Lưu dữ liệu gốc
+      
+      // Call other APIs
+      const [brandsResponse, categoriesResponse] = await Promise.all([
         getAllBrands(),
         getAllCategories()
       ]);
       
+      console.log("Brands response:", brandsResponse);
+      console.log("Categories response:", categoriesResponse);
+      setBrands(brandsResponse.data || []);
+      setCategories(categoriesResponse.data || []);
       console.log("All APIs called successfully");
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -41,22 +61,35 @@ export default function ProductList() {
     fetchAllData(showTrashed);
   }, [showTrashed]);
 
-  const handleSearch = async () => {
-    if (!searchKeyword.trim()) {
-      fetchAllData(showTrashed);
+  // Tìm kiếm local (không gọi API)
+  const handleSearch = (value: string) => {
+    setSearchKeyword(value);
+    
+    if (!value.trim()) {
+      // Nếu không có từ khóa, hiển thị tất cả
+      setProducts(allProducts);
       return;
     }
     
-    setLoading(true);
-    try {
-      const response = await searchProducts(searchKeyword);
-      setProducts(response.data || []);
-    } catch (error) {
-      console.error("Error searching products:", error);
-      message.error("Lỗi khi tìm kiếm sản phẩm");
-    } finally {
-      setLoading(false);
-    }
+    // Tìm kiếm trong dữ liệu đã có
+    const filtered = allProducts.filter(product => {
+      const searchTerm = value.toLowerCase();
+      const productName = product.name?.toLowerCase() || '';
+      const brandName = getBrandName(product.brand_id).toLowerCase();
+      const categoryName = getCategoryName(product.category_id).toLowerCase();
+      
+      return productName.includes(searchTerm) || 
+             brandName.includes(searchTerm) || 
+             categoryName.includes(searchTerm);
+    });
+    
+    setProducts(filtered);
+  };
+
+  // Reset search khi clear
+  const handleSearchClear = () => {
+    setSearchKeyword("");
+    setProducts(allProducts);
   };
 
   const handleDelete = (id: number) => {
@@ -101,6 +134,17 @@ export default function ProductList() {
     }
   };
 
+  // Helper function để tìm brand/category theo ID
+  const getBrandName = (brandId: number) => {
+    const brand = brands.find(b => b.id === brandId);
+    return brand?.name || `Brand ID: ${brandId}`;
+  };
+
+  const getCategoryName = (categoryId: number) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || `Category ID: ${categoryId}`;
+  };
+
   const columns = [
     {
       title: "Hình ảnh",
@@ -109,7 +153,7 @@ export default function ProductList() {
       render: (thumbnail: string) => (
         thumbnail ? 
         <img 
-          src={thumbnail.startsWith('http') ? thumbnail : `http://127.0.0.1:8000/storage/${thumbnail}`} 
+          src={thumbnail.startsWith('http') ? thumbnail : `http://localhost/storage/products/${thumbnail}`} 
           alt="Thumbnail" 
           style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} 
         /> : 
@@ -125,15 +169,15 @@ export default function ProductList() {
     },
     {
       title: "Thương hiệu",
-      dataIndex: "brand",
-      key: "brand",
-      render: (brand: any) => brand?.name || '-',
+      dataIndex: "brand_id",
+      key: "brand_id",
+      render: (brandId: number) => getBrandName(brandId),
     },
     {
       title: "Danh mục",
-      dataIndex: "category",
-      key: "category",
-      render: (category: any) => category?.name || '-',
+      dataIndex: "category_id", 
+      key: "category_id",
+      render: (categoryId: number) => getCategoryName(categoryId),
     },
     {
       title: "Trạng thái",
@@ -207,26 +251,29 @@ export default function ProductList() {
           >
             Thêm sản phẩm
           </Button>
-          <Button
-            type={showTrashed ? "primary" : "default"}
-            onClick={() => setShowTrashed(!showTrashed)}
-          >
-            {showTrashed ? "Sản phẩm đang bán" : "Sản phẩm đã xóa"}
-          </Button>
         </Space>
       }
     >
       <Space style={{ marginBottom: 16 }}>
         <Input.Search
-          placeholder="Tìm kiếm sản phẩm"
+          placeholder="Tìm kiếm theo tên sản phẩm, thương hiệu, danh mục..."
           allowClear
-          enterButton={<Button icon={<SearchOutlined />}>Tìm kiếm</Button>}
-          size="large"
           value={searchKeyword}
-          onChange={(e) => setSearchKeyword(e.target.value)}
+          onChange={(e) => handleSearch(e.target.value)}
           onSearch={handleSearch}
+          onClear={handleSearchClear}
           style={{ width: 400 }}
+          enterButton={
+            <Button type="primary" icon={<SearchOutlined />}>
+              Tìm kiếm
+            </Button>
+          }
         />
+        {searchKeyword && (
+          <span style={{ color: '#666', fontSize: '14px' }}>
+            Tìm thấy {products.length} sản phẩm
+          </span>
+        )}
       </Space>
       
       <Table
@@ -234,7 +281,12 @@ export default function ProductList() {
         dataSource={products}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 10 }}
+        pagination={{ 
+          pageSize: 10,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} sản phẩm`
+        }}
         style={{ borderRadius: 12, overflow: "hidden" }}
       />
     </Card>

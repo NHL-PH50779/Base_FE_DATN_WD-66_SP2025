@@ -16,7 +16,7 @@ export const axiosInstance = axios.create({
   timeout: 20000,
   headers: {
     "Content-Type": "application/json",
-    "Accept": "application/json", // Laravel API thường yêu cầu header này
+    "Accept": "application/json",
   },
 });
 
@@ -25,14 +25,26 @@ axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error) => {
     console.error("API Error:", error.response?.data || error.message);
+    
+    // Nếu lỗi 401 (Unauthorized), xóa token và redirect về login
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Có thể redirect về trang login ở đây
+      window.location.href = '/login';
+    }
+    
     return Promise.reject(error);
   }
 );
 
-// Xử lý request
+// Xử lý request - tự động thêm token
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Có thể thêm token xác thực ở đây nếu cần
+    const token = localStorage.getItem('token');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error: AxiosError) => {

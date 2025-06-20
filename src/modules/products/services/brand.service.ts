@@ -1,20 +1,34 @@
 import { brandApi } from "../api/brand.api";
 import type { Brand } from "../types/brand.type";
 
+// Helper function để parse response
+const parseResponse = (response: any) => {
+  let data;
+  if (typeof response.data === 'string') {
+    const jsonString = response.data.replace(/^\/\/ bootstrap\/app\.php\n/, '');
+    data = JSON.parse(jsonString);
+  } else {
+    data = response.data;
+  }
+  return Array.isArray(data) ? data : (data.data || data);
+};
+
 export const getAllBrands = async () => {
   try {
     const response = await brandApi.getAll();
-    return response.data;
+    const data = parseResponse(response);
+    return { data: Array.isArray(data) ? data : [] };
   } catch (error) {
     console.error("Error fetching brands:", error);
-    throw error;
+    return { data: [] };
   }
 };
 
 export const getBrandById = async (id: number) => {
   try {
     const response = await brandApi.getById(id);
-    return response.data;
+    const data = parseResponse(response);
+    return { data };
   } catch (error) {
     console.error(`Error fetching brand with id ${id}:`, error);
     throw error;
@@ -24,7 +38,7 @@ export const getBrandById = async (id: number) => {
 export const createBrand = async (data: Partial<Brand>) => {
   try {
     const response = await brandApi.create(data);
-    return response.data;
+    return parseResponse(response);
   } catch (error) {
     console.error("Error creating brand:", error);
     throw error;
@@ -34,7 +48,7 @@ export const createBrand = async (data: Partial<Brand>) => {
 export const updateBrand = async (id: number, data: Partial<Brand>) => {
   try {
     const response = await brandApi.update(id, data);
-    return response.data;
+    return parseResponse(response);
   } catch (error) {
     console.error(`Error updating brand with id ${id}:`, error);
     throw error;
@@ -44,7 +58,7 @@ export const updateBrand = async (id: number, data: Partial<Brand>) => {
 export const deleteBrand = async (id: number) => {
   try {
     const response = await brandApi.delete(id);
-    return response.data;
+    return parseResponse(response);
   } catch (error) {
     console.error(`Error deleting brand with id ${id}:`, error);
     throw error;

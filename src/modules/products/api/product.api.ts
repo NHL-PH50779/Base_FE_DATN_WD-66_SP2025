@@ -18,60 +18,38 @@ export const productApi = {
   },
   
   create: async (data: FormData | Partial<Product>) => {
-    const config = {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        ...(data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {})
-      }
-    };
+    const config = data instanceof FormData ? {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    } : {};
     const response = await axiosInstance.post("/products", data, config);
     return response;
   },
   
   update: async (id: number, data: FormData | Partial<Product>) => {
-    const config = {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        ...(data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {})
-      }
-    };
+    const config = data instanceof FormData ? {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    } : {};
     const response = await axiosInstance.put(`/products/${id}`, data, config);
     return response;
   },
   
   delete: async (id: number) => {
-    const response = await axiosInstance.delete(`/products/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.delete(`/products/${id}`);
     return response;
   },
   
   getTrashed: async () => {
-    const response = await axiosInstance.get(`/products/trashed`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.get(`/products/trashed`);
     return response;
   },
   
   restore: async (id: number) => {
-    const response = await axiosInstance.put(`/products/restore/${id}`, {}, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.put(`/products/restore/${id}`);
     return response;
   },
   
   toggleActive: async (id: number) => {
-    const response = await axiosInstance.put(`/products/toggle-active/${id}`, {}, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.put(`/products/toggle-active/${id}`);
     return response;
   },
 };

@@ -1,20 +1,34 @@
 import { categoryApi } from "../api/category.api";
 import type { Category } from "../types/category.type";
 
+// Helper function để parse response
+const parseResponse = (response: any) => {
+  let data;
+  if (typeof response.data === 'string') {
+    const jsonString = response.data.replace(/^\/\/ bootstrap\/app\.php\n/, '');
+    data = JSON.parse(jsonString);
+  } else {
+    data = response.data;
+  }
+  return Array.isArray(data) ? data : (data.data || data);
+};
+
 export const getAllCategories = async () => {
   try {
     const response = await categoryApi.getAll();
-    return response.data;
+    const data = parseResponse(response);
+    return { data: Array.isArray(data) ? data : [] };
   } catch (error) {
     console.error("Error fetching categories:", error);
-    throw error;
+    return { data: [] };
   }
 };
 
 export const getCategoryById = async (id: number) => {
   try {
     const response = await categoryApi.getById(id);
-    return response.data;
+    const data = parseResponse(response);
+    return { data };
   } catch (error) {
     console.error(`Error fetching category with id ${id}:`, error);
     throw error;
@@ -24,7 +38,7 @@ export const getCategoryById = async (id: number) => {
 export const createCategory = async (data: Partial<Category>) => {
   try {
     const response = await categoryApi.create(data);
-    return response.data;
+    return parseResponse(response);
   } catch (error) {
     console.error("Error creating category:", error);
     throw error;
@@ -34,7 +48,7 @@ export const createCategory = async (data: Partial<Category>) => {
 export const updateCategory = async (id: number, data: Partial<Category>) => {
   try {
     const response = await categoryApi.update(id, data);
-    return response.data;
+    return parseResponse(response);
   } catch (error) {
     console.error(`Error updating category with id ${id}:`, error);
     throw error;
@@ -44,7 +58,7 @@ export const updateCategory = async (id: number, data: Partial<Category>) => {
 export const deleteCategory = async (id: number) => {
   try {
     const response = await categoryApi.delete(id);
-    return response.data;
+    return parseResponse(response);
   } catch (error) {
     console.error(`Error deleting category with id ${id}:`, error);
     throw error;
