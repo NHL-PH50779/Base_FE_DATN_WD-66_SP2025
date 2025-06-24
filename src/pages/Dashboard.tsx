@@ -1,5 +1,7 @@
 import React from "react";
 import { Card, Col, Row, Statistic, List, Badge } from "antd";
+import { axiosInstance } from "../utils/axios.util";
+import { dashboardService } from '../services/dashboard.service';
 import {
   LaptopOutlined,
   ShoppingCartOutlined,
@@ -21,11 +23,50 @@ import {
 } from "recharts";
 
 const Dashboard: React.FC = () => {
-  const stats = {
-    laptops: 25,
-    orders: 120,
-    users: 80,
-    revenue: 150000000,
+  const [stats, setStats] = React.useState({
+    laptops: 0,
+    orders: 0,
+    users: 0,
+    revenue: 0,
+    categories: 0,
+    ordersByStatus: [] as Array<{status_id: number, status_name: string, count: number}>,
+    thisMonth: { orders: 0, revenue: 0 }
+  });
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    setLoading(true);
+    try {
+      const response = await dashboardService.getStats();
+      const data = response.data;
+      
+      setStats({
+        laptops: data.totals?.products || 0,
+        orders: data.totals?.orders || 0,
+        users: data.totals?.users || 0,
+        revenue: data.totals?.revenue || 0,
+        categories: data.totals?.categories || 0,
+        ordersByStatus: data.orders_by_status || [],
+        thisMonth: data.this_month || { orders: 0, revenue: 0 }
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      setStats({
+        laptops: 0,
+        orders: 0,
+        users: 0,
+        revenue: 0,
+        categories: 0,
+        ordersByStatus: [],
+        thisMonth: { orders: 0, revenue: 0 }
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const revenueData = [
@@ -56,6 +97,17 @@ const Dashboard: React.FC = () => {
 
   const COLORS = ["#1890ff", "#52c41a", "#faad14"];
 
+  const getStatusColor = (statusId: number) => {
+    const colors = {
+      1: '#faad14', // Chờ xác nhận
+      2: '#1890ff', // Đã xác nhận
+      3: '#13c2c2', // Đang giao
+      4: '#52c41a', // Đã giao
+      5: '#f5222d'  // Đã hủy
+    };
+    return colors[statusId as keyof typeof colors] || '#faad14';
+  };
+
   return (
     <div>
       <h2 style={{ color: "#1890ff", fontWeight: 700 }}>Thống kê tổng quan</h2>
@@ -66,6 +118,7 @@ const Dashboard: React.FC = () => {
               title="Sản phẩm"
               value={stats.laptops}
               prefix={<LaptopOutlined />}
+              loading={loading}
             />
           </Card>
         </Col>
@@ -75,6 +128,7 @@ const Dashboard: React.FC = () => {
               title="Đơn hàng"
               value={stats.orders}
               prefix={<ShoppingCartOutlined />}
+              loading={loading}
             />
           </Card>
         </Col>
@@ -84,6 +138,7 @@ const Dashboard: React.FC = () => {
               title="Người dùng"
               value={stats.users}
               prefix={<UserOutlined />}
+              loading={loading}
             />
           </Card>
         </Col>
@@ -93,7 +148,63 @@ const Dashboard: React.FC = () => {
               title="Doanh thu"
               value={stats.revenue.toLocaleString("vi-VN") + " ₫"}
               prefix={<DollarOutlined />}
+              loading={loading}
             />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Thống kê danh mục và tháng này */}
+      <Row gutter={16} style={{ marginTop: 16 }}>
+        <Col span={8}>
+          <Card style={{ borderTop: "4px solid #722ed1" }}>
+            <Statistic
+              title="Danh mục"
+              value={stats.categories}
+              prefix={<LaptopOutlined />}
+              loading={loading}
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card style={{ borderTop: "4px solid #13c2c2" }}>
+            <Statistic
+              title="Đơn hàng tháng này"
+              value={stats.thisMonth.orders}
+              prefix={<ShoppingCartOutlined />}
+              loading={loading}
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card style={{ borderTop: "4px solid #eb2f96" }}>
+            <Statistic
+              title="Doanh thu tháng này"
+              value={stats.thisMonth.revenue.toLocaleString("vi-VN") + " ₫"}
+              prefix={<DollarOutlined />}
+              loading={loading}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Thống kê đơn hàng theo trạng thái */}
+      <Row gutter={16} style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <Card title={<span style={{ color: "#1890ff" }}>Thống kê đơn hàng theo trạng thái</span>} style={{ borderRadius: 12 }}>
+            <Row gutter={16}>
+              {stats.ordersByStatus.map((status) => (
+                <Col span={6} key={status.status_id}>
+                  <Card size="small" style={{ textAlign: 'center', marginBottom: 8 }}>
+                    <Statistic
+                      title={status.status_name}
+                      value={status.count}
+                      valueStyle={{ color: getStatusColor(status.status_id) }}
+                    />
+                  </Card>
+                </Col>
+              ))}
+            </Row>
           </Card>
         </Col>
       </Row>

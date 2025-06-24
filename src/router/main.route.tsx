@@ -2,16 +2,17 @@ import { Navigate } from "react-router-dom";
 import AdminLayout from "../components/layouts/AdminLayout";
 import Dashboard from "../pages/Dashboard";
 import UserList from "../pages/UserList";
-import Login from "../components/auth/Login";
-import Register from "../components/auth/Register";
+import OrderList from "../pages/OrderList";
+import CartList from "../pages/CartList";
+import CategoryList from "../pages/CategoryList";
+import BrandList from "../pages/BrandList";
+import AdminLogin from "../pages/AdminLogin";
+import AdminRegister from "../pages/AdminRegister";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
 // Import từ modules
-import { OrderList } from "../modules/orders";
 import { 
   ProductList, 
-  CategoryList, 
-  BrandList,
   ProductCreate,
   ProductEdit,
   AttributeList
@@ -21,11 +22,15 @@ const routes = [
   // Public routes
   {
     path: "/login",
-    element: <Login />,
+    element: <AdminLogin />,
   },
   {
-    path: "/register", 
-    element: <Register />,
+    path: "/admin/login",
+    element: <AdminLogin />,
+  },
+  {
+    path: "/admin/register", 
+    element: <AdminRegister />,
   },
   
   // Admin routes (cần admin role)
@@ -48,11 +53,17 @@ const routes = [
       { path: "brands", element: <BrandList /> },
       { path: "attributes", element: <AttributeList /> },
       
+
+      
+
+      // Quản lý người dùng
+      { path: "users", element: <UserList /> },
+      
       // Quản lý đơn hàng
       { path: "orders", element: <OrderList /> },
       
-      // Quản lý người dùng
-      { path: "users", element: <UserList /> },
+      // Quản lý giỏ hàng
+      { path: "carts", element: <CartList /> },
     ],
   },
   
@@ -70,16 +81,16 @@ const routes = [
     ],
   },
   
-  // Redirect root to login
+  // Redirect root to admin
   {
     path: "/",
-    element: <Navigate to="/login" />,
+    element: <Navigate to="/admin" />,
   },
   
   // Catch all
   {
     path: "*",
-    element: <Navigate to="/login" />,
+    element: <Navigate to="/admin/login" />,
   },
 ];
 

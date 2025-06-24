@@ -1,27 +1,33 @@
 import { useEffect, useState } from "react";
-import { Table, Button, Space, Tag, Input, Modal, message, Card } from "antd";
-import { EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
-import { axiosInstance } from "../utils/axios.util";
+import { Table, Button, Space, Tag, Modal, message, Card, Select, Form, Input } from "antd";
+import { EditOutlined, DeleteOutlined, UserOutlined, PlusOutlined, EyeOutlined } from "@ant-design/icons";
+import { userService } from "../services/user.service";
+
+const { Option } = Select;
 
 interface User {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'client';
+  role: string;
   created_at: string;
 }
 
 export default function UserList() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchKeyword, setSearchKeyword] = useState("");
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [viewingUser, setViewingUser] = useState<User | null>(null);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [form] = Form.useForm();
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.get("/admin/users");
-      console.log("Users response:", response);
-      setUsers(response.data.users || []);
+      const response = await userService.getAllUsers();
+      console.log('Users response:', response);
+      setUsers(response.data || []);
     } catch (error) {
       console.error("Error fetching users:", error);
       message.error("Không thể tải danh sách người dùng");
@@ -34,10 +40,52 @@ export default function UserList() {
     fetchUsers();
   }, []);
 
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchKeyword.toLowerCase())
-  );
+  const handleAdd = () => {
+    setEditingUser(null);
+    form.resetFields();
+    setModalVisible(true);
+  };
+
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    form.setFieldsValue({
+      name: user.name,
+      email: user.email,
+      role: user.role
+    });
+    setModalVisible(true);
+  };
+
+  const handleView = (user: User) => {
+    setViewingUser(user);
+    setViewModalVisible(true);
+  };
+
+  const handleSubmit = async (values: any) => {
+    try {
+      if (editingUser) {
+        await userService.updateUser(editingUser.id, values);
+        message.success('Cập nhật người dùng thành công');
+      } else {
+        await userService.createUser(values);
+        message.success('Thêm người dùng thành công');
+      }
+      setModalVisible(false);
+      fetchUsers();
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Có lỗi xảy ra');
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await userService.deleteUser(id);
+      message.success('Xóa người dùng thành công');
+      fetchUsers();
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Có lỗi xảy ra');
+    }
+  };
 
   const columns = [
     {
@@ -47,7 +95,7 @@ export default function UserList() {
       width: 80,
     },
     {
-      title: "Tên",
+      title: "Họ tên",
       dataIndex: "name",
       key: "name",
     },
@@ -62,7 +110,7 @@ export default function UserList() {
       key: "role",
       render: (role: string) => (
         <Tag color={role === 'admin' ? 'red' : 'blue'}>
-          {role === 'admin' ? 'Admin' : 'Client'}
+          {role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}
         </Tag>
       ),
     },
@@ -73,20 +121,34 @@ export default function UserList() {
       render: (date: string) => new Date(date).toLocaleDateString('vi-VN'),
     },
     {
-      title: "Hành động",
-      key: "action",
+      title: "Thao tác",
+      key: "actions",
+      width: 200,
       render: (_: any, record: User) => (
         <Space>
-          <Button 
-            icon={<EditOutlined />}
+          <Button
+            type="primary"
             size="small"
+            icon={<EyeOutlined />}
+            onClick={() => handleView(record)}
+          >
+            Xem
+          </Button>
+          <Button
+            type="default"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
           >
             Sửa
           </Button>
-          <Button 
-            icon={<DeleteOutlined />}
+          <Button
+            type="primary"
             danger
             size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+            disabled={record.role === 'admin'}
           >
             Xóa
           </Button>
@@ -96,41 +158,144 @@ export default function UserList() {
   ];
 
   return (
-    <Card
-      title={<span style={{ color: "#1890ff", fontWeight: 700, fontSize: 22 }}>Quản lý Người dùng</span>}
-      style={{
-        background: "linear-gradient(135deg, #f0f5ff 0%, #e6fffb 100%)",
-        borderRadius: 16,
-        boxShadow: "0 4px 24px rgba(24,144,255,0.08)",
-        marginBottom: 24,
-      }}
-      styles={{
-        header: {
-          borderRadius: "16px 16px 0 0",
-          background: "#fff",
-        }
-      }}
-    >
-      <Space style={{ marginBottom: 16 }}>
-        <Input.Search
-          placeholder="Tìm kiếm người dùng"
-          allowClear
-          enterButton={<Button icon={<SearchOutlined />}>Tìm kiếm</Button>}
-          size="large"
-          value={searchKeyword}
-          onChange={(e) => setSearchKeyword(e.target.value)}
-          style={{ width: 400 }}
-        />
-      </Space>
-      
+    <Card>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Space>
+          <UserOutlined />
+          <span style={{ color: "#1890ff", fontWeight: 700, fontSize: 22 }}>
+            Quản lý người dùng
+          </span>
+        </Space>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleAdd}
+        >
+          Thêm người dùng
+        </Button>
+      </div>
+
       <Table
         columns={columns}
-        dataSource={filteredUsers}
-        rowKey="id"
+        dataSource={users}
         loading={loading}
-        pagination={{ pageSize: 10 }}
-        style={{ borderRadius: 12, overflow: "hidden" }}
+        rowKey="id"
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total) => `Tổng cộng ${total} người dùng`,
+        }}
       />
+
+      {/* Add/Edit Modal */}
+      <Modal
+        title={editingUser ? 'Sửa người dùng' : 'Thêm người dùng'}
+        open={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        footer={null}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+        >
+          <Form.Item
+            name="name"
+            label="Tên"
+            rules={[
+              { required: true, message: 'Vui lòng nhập tên' },
+              { max: 255, message: 'Tên không được quá 255 ký tự' }
+            ]}
+          >
+            <Input placeholder="Nhập tên người dùng" />
+          </Form.Item>
+
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              { required: true, message: 'Vui lòng nhập email' },
+              { type: 'email', message: 'Email không hợp lệ' }
+            ]}
+          >
+            <Input placeholder="Nhập email" />
+          </Form.Item>
+
+          {!editingUser && (
+            <Form.Item
+              name="password"
+              label="Mật khẩu"
+              rules={[
+                { required: true, message: 'Vui lòng nhập mật khẩu' },
+                { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự' }
+              ]}
+            >
+              <Input.Password placeholder="Nhập mật khẩu" />
+            </Form.Item>
+          )}
+
+          {editingUser && (
+            <Form.Item
+              name="password"
+              label="Mật khẩu mới (tùy chọn)"
+              rules={[
+                { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự' }
+              ]}
+            >
+              <Input.Password placeholder="Nhập mật khẩu mới (bỏ trống nếu không đổi)" />
+            </Form.Item>
+          )}
+
+          <Form.Item
+            name="role"
+            label="Vai trò"
+            rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
+          >
+            <Select placeholder="Chọn vai trò">
+              <Option value="client">Khách hàng</Option>
+              <Option value="admin">Quản trị viên</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setModalVisible(false)}>
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit">
+                {editingUser ? 'Cập nhật' : 'Thêm'}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* View Modal */}
+      <Modal
+        title="Chi tiết người dùng"
+        open={viewModalVisible}
+        onCancel={() => setViewModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setViewModalVisible(false)}>
+            Đóng
+          </Button>
+        ]}
+      >
+        {viewingUser && (
+          <div>
+            <p><strong>ID:</strong> {viewingUser.id}</p>
+            <p><strong>Tên:</strong> {viewingUser.name}</p>
+            <p><strong>Email:</strong> {viewingUser.email}</p>
+            <p><strong>Vai trò:</strong> 
+              <Tag color={viewingUser.role === 'admin' ? 'red' : 'blue'} style={{ marginLeft: 8 }}>
+                {viewingUser.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}
+              </Tag>
+            </p>
+            <p><strong>Ngày tạo:</strong> {new Date(viewingUser.created_at).toLocaleString('vi-VN')}</p>
+          </div>
+        )}
+      </Modal>
     </Card>
   );
 }

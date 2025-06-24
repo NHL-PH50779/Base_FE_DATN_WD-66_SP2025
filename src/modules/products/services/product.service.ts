@@ -5,7 +5,12 @@ import type { Product } from "../types/product.type";
 const parseResponse = (response: any) => {
   let data;
   if (typeof response.data === 'string') {
-    const jsonString = response.data.replace(/^\/\/ bootstrap\/app\.php\n/, '');
+    // Loại bỏ phần bootstrap comment và Git conflict markers
+    const jsonString = response.data
+      .replace(/^\/\/ bootstrap\/app\.php\n/, '')
+      .replace(/<<<<<<< HEAD\n/g, '')
+      .replace(/=======\n/g, '')
+      .replace(/>>>>>>> [^\n]+\n/g, '');
     data = JSON.parse(jsonString);
   } else {
     data = response.data;

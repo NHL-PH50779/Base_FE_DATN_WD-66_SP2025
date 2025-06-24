@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Select, Button, Upload, Switch, Card, Divider, Space, InputNumber, Table, message, Tabs, Modal } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, UploadOutlined, DeleteOutlined, PlusCircleOutlined } from '@ant-design/icons';
+import ImageUpload from '../../../components/common/ImageUpload';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProduct, getProductById, updateProduct } from '../services/product.service';
 import { getAllBrands } from '../services/brand.service';
@@ -26,10 +27,11 @@ interface VariantAttribute {
 interface ProductVariant {
   id: number;
   sku: string;
+  name?: string;
+  Name?: string; // Database field với chữ N hoa
   price: number;
   stock: number;
   is_active: boolean;
-  color?: string;
   attributes?: VariantAttribute[];
 }
 
@@ -55,19 +57,42 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
     values: number[];
   }[]>([]);
 
+  const fetchAttributes = async () => {
+    try {
+      const attributesRes = await getAllAttributes();
+      console.log('Raw attributes response:', attributesRes);
+      
+      let attributesData = Array.isArray(attributesRes.data) ? attributesRes.data : [];
+      
+      // Debug: Log từng attribute để xem structure
+      attributesData.forEach((attr, index) => {
+        console.log(`Attribute ${index}:`, attr);
+        console.log(`  - ID: ${attr.id}`);
+        console.log(`  - Name: ${attr.name}`);
+        console.log(`  - Values:`, attr.values);
+      });
+      
+      setAttributes(attributesData);
+    } catch (error) {
+      console.error("Error fetching attributes:", error);
+      setAttributes([]);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch brands, categories, and attributes
-        const [brandsRes, categoriesRes, attributesRes] = await Promise.all([
+        const [brandsRes, categoriesRes] = await Promise.all([
           getAllBrands(),
-          getAllCategories(),
-          getAllAttributes()
+          getAllCategories()
         ]);
         
         setBrands(brandsRes.data || []);
         setCategories(categoriesRes.data || []);
-        setAttributes(Array.isArray(attributesRes.data) ? attributesRes.data : []);
+        
+        // Fetch attributes separately
+        await fetchAttributes();
 
         // If editing, fetch product details
         if (isEdit && id) {
@@ -92,13 +117,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
             
             // Set thumbnail if available
             if (product.thumbnail) {
+              const thumbnailUrl = product.thumbnail.startsWith('http') 
+                ? product.thumbnail 
+                : `http://127.0.0.1:8000/storage/products/${product.thumbnail.replace('products/', '')}`;
               setFileList([{
                 uid: '-1',
                 name: 'thumbnail.png',
                 status: 'done',
-                url: product.thumbnail.startsWith('http') 
-                  ? product.thumbnail 
-                  : `http://localhost/storage/products/${product.thumbnail}`
+                url: thumbnailUrl
               }]);
             }
           }
@@ -185,11 +211,17 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
     const newVariants = combinations.map((combination, index) => {
       // Tạo SKU từ tên sản phẩm và các giá trị thuộc tính
       const productName = form.getFieldValue('name') || '';
-      const sku = `${productName.substring(0, 3).toUpperCase()}-${combination.map(c => c.value.substring(0, 2)).join('-')}-${index + 1}`;
+      const timestamp = Date.now().toString().slice(-4);
+      const sku = `${productName.substring(0, 3).toUpperCase()}-${combination.map(c => c.value.substring(0, 2)).join('-')}-${timestamp}-${index + 1}`;
+      
+      // Tạo name từ combination
+      const variantName = combination.map(c => c.value).join(' - ');
       
       return {
         id: Date.now() + index,
         sku,
+        name: variantName,
+        Name: variantName, // Database field với chữ N hoa
         price: 0,
         stock: 0,
         is_active: true,
@@ -217,7 +249,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
     try {
       // Tạo thuộc tính mới
       const attributeRes = await createAttribute({ name: newAttributeName });
-      const newAttribute = attributeRes.data;
+      const newAttribute = attributeRes.data || attributeRes;
       
       if (newAttribute && newAttribute.id) {
         // Tạo các giá trị thuộc tính
@@ -231,8 +263,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         await Promise.all(valuePromises);
         
         // Cập nhật danh sách thuộc tính
-        const attributesRes = await getAllAttributes();
-        setAttributes(Array.isArray(attributesRes.data) ? attributesRes.data : []);
+        await fetchAttributes();
         
         // Reset form
         setNewAttributeName('');
@@ -248,13 +279,18 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
   };
 
   const handleAddVariant = () => {
+    const timestamp = Date.now().toString().slice(-4);
+    const productName = form.getFieldValue('name') || 'PROD';
+    const defaultSku = `${productName.substring(0, 3).toUpperCase()}-${timestamp}-${variants.length + 1}`;
+    
     setVariants([...variants, {
       id: Date.now(),
-      sku: '',
+      sku: defaultSku,
+      name: '',
+      Name: '', // Database field với chữ N hoa
       price: 0,
       stock: 0,
-      is_active: true,
-      color: ''
+      is_active: true
     }]);
   };
 
@@ -263,9 +299,17 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
   };
 
   const handleVariantChange = (variantId: number, field: string, value: any) => {
-    setVariants(variants.map(v => 
-      v.id === variantId ? { ...v, [field]: value } : v
-    ));
+    setVariants(variants.map(v => {
+      if (v.id === variantId) {
+        const updated = { ...v, [field]: value };
+        // Sync name và Name
+        if (field === 'name') {
+          updated.Name = value;
+        }
+        return updated;
+      }
+      return v;
+    }));
   };
 
   const handleSubmit = async (values: any) => {
@@ -281,32 +325,38 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         is_active: values.is_active ? 1 : 0,
       };
       
-      // Thêm variants nếu có
+      // Thêm variants nếu có - format theo database schema
       if (variants.length > 0) {
-        productData.variants = variants;
+        // Lọc bỏ các variant rỗng (không có SKU)
+        const validVariants = variants.filter(variant => variant.sku && variant.sku.trim() !== '');
+        
+        if (validVariants.length > 0) {
+          productData.variants = validVariants.map(variant => ({
+            sku: variant.sku,
+            Name: variant.Name || variant.name || variant.sku, // Database field 'Name' (uppercase N)
+            price: variant.price,
+            stock: variant.stock, // Database field 'stock'
+            // Bỏ is_active vì database không có cột này
+            attributes: variant.attributes || []
+          }));
+        }
       }
       
-      console.log('Submitting product data:', productData);
+
       
       if (isEdit && id) {
+        // Nếu có ảnh mới, gửi kèm thumbnail URL
+        if (fileList.length > 0 && fileList[0].url) {
+          productData.thumbnail = fileList[0].url;
+        }
         await updateProduct(parseInt(id), productData);
         message.success('Cập nhật sản phẩm thành công');
       } else {
-        // Với create vẫn dùng FormData nếu có file
-        if (fileList.length > 0 && fileList[0].originFileObj) {
-          const formData = new FormData();
-          Object.keys(productData).forEach(key => {
-            if (key === 'variants') {
-              formData.append(key, JSON.stringify(productData[key]));
-            } else {
-              formData.append(key, productData[key]);
-            }
-          });
-          formData.append('thumbnail', fileList[0].originFileObj);
-          await createProduct(formData);
-        } else {
-          await createProduct(productData);
+        // Thêm thumbnail URL nếu có
+        if (fileList.length > 0 && fileList[0].url) {
+          productData.thumbnail = fileList[0].url;
         }
+        await createProduct(productData);
         message.success('Thêm sản phẩm thành công');
       }
       
@@ -333,14 +383,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
       )
     },
     {
-      title: 'Màu sắc',
-      dataIndex: 'color',
-      key: 'color',
+      title: 'Tên biến thể',
+      dataIndex: 'name',
+      key: 'name',
       render: (text: string, record: ProductVariant) => (
         <Input
           value={text}
-          onChange={(e) => handleVariantChange(record.id, 'color', e.target.value)}
-          placeholder="Nhập màu sắc"
+          onChange={(e) => handleVariantChange(record.id, 'name', e.target.value)}
+          placeholder="Tên biến thể"
         />
       )
     },
@@ -395,17 +445,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         />
       )
     },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'is_active',
-      key: 'is_active',
-      render: (checked: boolean, record: ProductVariant) => (
-        <Switch
-          checked={checked}
-          onChange={(value) => handleVariantChange(record.id, 'is_active', value)}
-        />
-      )
-    },
+    // Bỏ cột trạng thái vì database không có cột is_active
     {
       title: 'Hành động',
       key: 'action',
@@ -437,29 +477,37 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
             </Button>
           </div>
           
-          {attributes.map(attribute => (
-            <div key={attribute.id} style={{ marginBottom: 16 }}>
-              <h4>{attribute.name}</h4>
-              <Select
-                mode="multiple"
-                style={{ width: '100%' }}
-                placeholder={`Chọn giá trị cho ${attribute.name}`}
-                onChange={(values) => handleSelectAttribute(attribute.id!, values)}
-              >
-                {attribute.values?.map(value => (
-                  <Option key={value.id} value={value.id!}>{value.value}</Option>
-                ))}
-              </Select>
+          {attributes.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+              <p>Chưa có thuộc tính nào. Hãy vào trang <a href="/admin/attributes">Quản lý Thuộc tính</a> để thêm.</p>
             </div>
-          ))}
+          ) : (
+            attributes.map(attribute => (
+              <div key={attribute.id} style={{ marginBottom: 16 }}>
+                <h4>{attribute.name} ({attribute.values?.length || 0} giá trị)</h4>
+                <Select
+                  mode="multiple"
+                  style={{ width: '100%' }}
+                  placeholder={`Chọn giá trị cho ${attribute.name}`}
+                  onChange={(values) => handleSelectAttribute(attribute.id!, values)}
+                >
+                  {attribute.values?.map(value => (
+                    <Option key={value.id} value={value.id!}>{value.value}</Option>
+                  ))}
+                </Select>
+              </div>
+            ))
+          )}
           
-          <Button 
-            type="primary" 
-            onClick={generateVariants} 
-            style={{ marginTop: 16 }}
-          >
-            Tạo biến thể
-          </Button>
+          {attributes.length > 0 && (
+            <Button 
+              type="primary" 
+              onClick={generateVariants} 
+              style={{ marginTop: 16 }}
+            >
+              Tạo biến thể
+            </Button>
+          )}
         </div>
       )
     },
@@ -519,15 +567,21 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
             name="thumbnail"
             label="Hình ảnh"
           >
-            <Upload
-              listType="picture"
-              maxCount={1}
-              fileList={fileList}
-              onChange={({ fileList }) => setFileList(fileList)}
-              beforeUpload={() => false}
-            >
-              <Button icon={<UploadOutlined />}>Chọn ảnh</Button>
-            </Upload>
+            <ImageUpload
+              value={fileList.length > 0 ? fileList[0].url : undefined}
+              onChange={(url) => {
+                if (url) {
+                  setFileList([{
+                    uid: '-1',
+                    name: 'thumbnail.png',
+                    status: 'done',
+                    url: url
+                  }]);
+                } else {
+                  setFileList([]);
+                }
+              }}
+            />
           </Form.Item>
 
           <Form.Item

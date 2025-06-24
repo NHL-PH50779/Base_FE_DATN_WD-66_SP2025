@@ -28,7 +28,7 @@ const AdminLayout = () => {
   const getOpenKeys = () => {
     if (selectedKey === 'dashboard') return ['dashboard'];
     if (['products', 'categories', 'brands', 'attributes'].includes(selectedKey)) return ['product-management'];
-    if (selectedKey === 'orders') return ['order-management'];
+    if (['orders', 'carts'].includes(selectedKey)) return ['order-management'];
     if (selectedKey === 'users') return ['user-management'];
     return [];
   };
@@ -101,6 +101,11 @@ const AdminLayout = () => {
           key: 'orders',
           icon: <ShoppingCartOutlined />,
           label: <Link to="/admin/orders">Đơn hàng</Link>,
+        },
+        {
+          key: 'carts',
+          icon: <ShoppingCartOutlined />,
+          label: <Link to="/admin/carts">Giỏ hàng</Link>,
         },
       ],
     },

@@ -1,30 +1,49 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, message, Select } from 'antd';
+import { Form, Input, Button, Card, message, Alert } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
 
-const { Option } = Select;
-
 export default function Register() {
   const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState(false);
   const navigate = useNavigate();
 
-  const onFinish = async (values: any) => {
+  const onFinish = async (values: { 
+    name: string; 
+    email: string; 
+    password: string; 
+    password_confirmation: string;
+  }) => {
     setLoading(true);
+    setServerError(false);
+    
     try {
-      await authService.register(values);
-      message.success('Đăng ký thành công');
-      navigate('/admin/dashboard');
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Đăng ký thất bại';
-      const errors = error.response?.data?.errors;
+      // Mặc định role là 'client' - không cho user chọn
+      const registerData = {
+        ...values,
+        role: 'client'
+      };
       
-      if (errors) {
-        Object.keys(errors).forEach(field => {
-          message.error(errors[field][0]);
-        });
+      const response = await authService.register(registerData);
+      console.log('Register response:', response);
+      
+      message.success('Đăng ký thành công! Đang chuyển hướng...');
+      
+      // Delay để đảm bảo localStorage đã được cập nhật
+      setTimeout(() => {
+        // Redirect về client dashboard vì mặc định là client
+        window.location.href = '/client/dashboard';
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('Register error:', error);
+      
+      if (error.response?.status === 404) {
+        setServerError(true);
+        message.error('Không thể kết nối đến server. Vui lòng kiểm tra backend Laravel.');
       } else {
+        const errorMessage = error.response?.data?.message || 'Đăng ký thất bại';
         message.error(errorMessage);
       }
     } finally {
@@ -44,10 +63,23 @@ export default function Register() {
         title="Đăng ký tài khoản" 
         style={{ width: 400, boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}
       >
+        {serverError && (
+          <Alert
+            message="Server không khả dụng"
+            description="Vui lòng khởi động Laravel server bằng lệnh: php artisan serve"
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
+        
         <Form onFinish={onFinish} layout="vertical">
           <Form.Item
             name="name"
-            rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}
+            rules={[
+              { required: true, message: 'Vui lòng nhập họ tên!' },
+              { min: 2, message: 'Họ tên phải có ít nhất 2 ký tự!' }
+            ]}
           >
             <Input 
               prefix={<UserOutlined />} 
@@ -69,27 +101,17 @@ export default function Register() {
               size="large"
             />
           </Form.Item>
-
-          <Form.Item
-            name="role"
-            rules={[{ required: true, message: 'Vui lòng chọn vai trò!' }]}
-          >
-            <Select placeholder="Chọn vai trò" size="large">
-              <Option value="admin">Admin</Option>
-              <Option value="client">Client</Option>
-            </Select>
-          </Form.Item>
           
           <Form.Item
             name="password"
             rules={[
               { required: true, message: 'Vui lòng nhập mật khẩu!' },
-              { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự!' }
+              { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
             ]}
           >
             <Input.Password 
               prefix={<LockOutlined />} 
-              placeholder="Mật khẩu (tối thiểu 8 ký tự)" 
+              placeholder="Mật khẩu" 
               size="large"
             />
           </Form.Item>
@@ -123,6 +145,7 @@ export default function Register() {
               loading={loading}
               size="large"
               style={{ width: '100%' }}
+              disabled={serverError}
             >
               Đăng ký
             </Button>

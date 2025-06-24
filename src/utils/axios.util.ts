@@ -31,7 +31,15 @@ axiosInstance.interceptors.response.use(
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       // Có thể redirect về trang login ở đây
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    
+    // Nếu lỗi 404 và là API login/register, hiển thị thông báo backend offline
+    if (error.response?.status === 404 && 
+        (error.config?.url?.includes('/login') || error.config?.url?.includes('/register'))) {
+      console.error("Backend server không khả dụng. Vui lòng kiểm tra server Laravel.");
     }
     
     return Promise.reject(error);

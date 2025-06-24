@@ -22,8 +22,13 @@ export const authService = {
       // Response data là string, cần parse JSON
       let jsonData;
       if (typeof response.data === 'string') {
-        // Loại bỏ phần "// bootstrap/app.php\n" ở đầu
-        const jsonString = response.data.replace(/^\/\/ bootstrap\/app\.php\n/, '');
+        // Loại bỏ phần "// bootstrap/app.php\n" và Git conflict markers
+        let jsonString = response.data
+          .replace(/^\/\/ bootstrap\/app\.php\n/, '')
+          .replace(/<<<<<<< HEAD\n/g, '')
+          .replace(/=======\n/g, '')
+          .replace(/>>>>>>> [^\n]+\n/g, '');
+        
         console.log('Cleaned JSON string:', jsonString);
         jsonData = JSON.parse(jsonString);
       } else {
@@ -55,7 +60,11 @@ export const authService = {
     // Xử lý tương tự cho register
     let jsonData;
     if (typeof response.data === 'string') {
-      const jsonString = response.data.replace(/^\/\/ bootstrap\/app\.php\n/, '');
+      let jsonString = response.data
+        .replace(/^\/\/ bootstrap\/app\.php\n/, '')
+        .replace(/<<<<<<< HEAD\n/g, '')
+        .replace(/=======\n/g, '')
+        .replace(/>>>>>>> [^\n]+\n/g, '');
       jsonData = JSON.parse(jsonString);
     } else {
       jsonData = response.data;

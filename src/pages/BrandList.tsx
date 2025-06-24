@@ -12,63 +12,63 @@ import {
   Typography
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { categoryService } from '../services/category.service';
+import { brandService } from '../services/brand.service';
 
 const { Title } = Typography;
 
-interface Category {
+interface Brand {
   id: number;
   name: string;
   created_at: string;
   updated_at: string;
 }
 
-const CategoryList = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
+const BrandList = () => {
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [form] = Form.useForm();
 
   useEffect(() => {
-    fetchCategories();
+    fetchBrands();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchBrands = async () => {
     setLoading(true);
     try {
-      const response = await categoryService.getAllCategories();
-      setCategories(response.data);
+      const response = await brandService.getAllBrands();
+      setBrands(response.data);
     } catch (error) {
-      message.error('Lỗi khi tải danh sách danh mục');
+      message.error('Lỗi khi tải danh sách thương hiệu');
     } finally {
       setLoading(false);
     }
   };
 
   const handleAdd = () => {
-    setEditingCategory(null);
+    setEditingBrand(null);
     form.resetFields();
     setModalVisible(true);
   };
 
-  const handleEdit = (category: Category) => {
-    setEditingCategory(category);
-    form.setFieldsValue({ name: category.name });
+  const handleEdit = (brand: Brand) => {
+    setEditingBrand(brand);
+    form.setFieldsValue({ name: brand.name });
     setModalVisible(true);
   };
 
   const handleSubmit = async (values: { name: string }) => {
     try {
-      if (editingCategory) {
-        await categoryService.updateCategory(editingCategory.id, values);
-        message.success('Cập nhật danh mục thành công');
+      if (editingBrand) {
+        await brandService.updateBrand(editingBrand.id, values);
+        message.success('Cập nhật thương hiệu thành công');
       } else {
-        await categoryService.createCategory(values);
-        message.success('Thêm danh mục thành công');
+        await brandService.createBrand(values);
+        message.success('Thêm thương hiệu thành công');
       }
       setModalVisible(false);
-      fetchCategories();
+      fetchBrands();
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Có lỗi xảy ra');
     }
@@ -76,9 +76,9 @@ const CategoryList = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await categoryService.deleteCategory(id);
-      message.success('Xóa danh mục thành công');
-      fetchCategories();
+      await brandService.deleteBrand(id);
+      message.success('Xóa thương hiệu thành công');
+      fetchBrands();
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Có lỗi xảy ra');
     }
@@ -92,7 +92,7 @@ const CategoryList = () => {
       width: 80,
     },
     {
-      title: 'Tên danh mục',
+      title: 'Tên thương hiệu',
       dataIndex: 'name',
       key: 'name',
     },
@@ -106,7 +106,7 @@ const CategoryList = () => {
       title: 'Thao tác',
       key: 'actions',
       width: 150,
-      render: (_: any, record: Category) => (
+      render: (_: any, record: Brand) => (
         <Space>
           <Button
             type="primary"
@@ -117,7 +117,7 @@ const CategoryList = () => {
             Sửa
           </Button>
           <Popconfirm
-            title="Bạn có chắc muốn xóa danh mục này?"
+            title="Bạn có chắc muốn xóa thương hiệu này?"
             onConfirm={() => handleDelete(record.id)}
             okText="Có"
             cancelText="Không"
@@ -139,31 +139,31 @@ const CategoryList = () => {
   return (
     <Card>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={2}>Quản lý danh mục</Title>
+        <Title level={2}>Quản lý thương hiệu</Title>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAdd}
         >
-          Thêm danh mục
+          Thêm thương hiệu
         </Button>
       </div>
 
       <Table
         columns={columns}
-        dataSource={categories}
+        dataSource={brands}
         loading={loading}
         rowKey="id"
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
           showQuickJumper: true,
-          showTotal: (total) => `Tổng cộng ${total} danh mục`,
+          showTotal: (total) => `Tổng cộng ${total} thương hiệu`,
         }}
       />
 
       <Modal
-        title={editingCategory ? 'Sửa danh mục' : 'Thêm danh mục'}
+        title={editingBrand ? 'Sửa thương hiệu' : 'Thêm thương hiệu'}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
@@ -175,13 +175,13 @@ const CategoryList = () => {
         >
           <Form.Item
             name="name"
-            label="Tên danh mục"
+            label="Tên thương hiệu"
             rules={[
-              { required: true, message: 'Vui lòng nhập tên danh mục' },
-              { max: 255, message: 'Tên danh mục không được quá 255 ký tự' }
+              { required: true, message: 'Vui lòng nhập tên thương hiệu' },
+              { max: 255, message: 'Tên thương hiệu không được quá 255 ký tự' }
             ]}
           >
-            <Input placeholder="Nhập tên danh mục" />
+            <Input placeholder="Nhập tên thương hiệu" />
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
@@ -190,7 +190,7 @@ const CategoryList = () => {
                 Hủy
               </Button>
               <Button type="primary" htmlType="submit">
-                {editingCategory ? 'Cập nhật' : 'Thêm'}
+                {editingBrand ? 'Cập nhật' : 'Thêm'}
               </Button>
             </Space>
           </Form.Item>
@@ -200,4 +200,4 @@ const CategoryList = () => {
   );
 };
 
-export default CategoryList;
+export default BrandList;

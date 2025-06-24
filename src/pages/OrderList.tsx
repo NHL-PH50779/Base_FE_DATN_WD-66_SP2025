@@ -1,244 +1,305 @@
-import { useEffect, useState } from "react";
-import { Table, Button, Select, Space, Tag, Input, Modal, DatePicker, message, Card } from "antd";
-import type { Order } from "../types/order.type";
-import { orderApi } from "../api/order.api";
-import dayjs, { Dayjs } from "dayjs";
+import React, { useEffect, useState } from 'react';
+import {
+  Table,
+  Tag,
+  Button,
+  Modal,
+  Select,
+  Card,
+  Row,
+  Col,
+  Typography,
+  Space,
+  Image,
+  Spin,
+  Alert,
+  Descriptions
+} from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
+import { orderService } from '../services/order.service';
 
-const statusOptions = [
-  { value: "pending", label: "Chờ xử lý", color: "orange" },
-  { value: "processing", label: "Đã xác nhận", color: "blue" },
-  { value: "shipping", label: "Đang giao hàng", color: "purple" },
-  { value: "completed", label: "Hoàn thành", color: "green" },
-  { value: "cancelled", label: "Đã hủy", color: "red" },
-];
+const { Title, Text } = Typography;
+const { Option } = Select;
 
-const paymentOptions = [
-  { value: "cod", label: "COD" },
-  { value: "bank", label: "Chuyển khoản" },
-  { value: "online", label: "Online" },
-];
+interface OrderItem {
+  id: number;
+  product_variant_id: number;
+  quantity: number;
+  price: number;
+  product_variant: {
+    Name: string;
+    product: {
+      name: string;
+      thumbnail: string;
+    };
+  };
+}
 
-type PaymentMethod = "cod" | "bank" | "online";
+interface Order {
+  id: number;
+  user_id: number;
+  total: number;
+  order_status_id: number;
+  payment_status_id: number;
+  created_at: string;
+  updated_at: string;
+  user: {
+    name: string;
+    email: string;
+  };
+  items: OrderItem[];
+}
 
-type DateRange = [Dayjs, Dayjs] | null;
+const statusConfig = {
+  1: { label: 'Chờ xác nhận', color: 'orange' },
+  2: { label: 'Đã xác nhận', color: 'blue' },
+  3: { label: 'Đang giao', color: 'cyan' },
+  4: { label: 'Đã giao', color: 'green' },
+  5: { label: 'Đã hủy', color: 'red' }
+};
 
-export default function OrderList() {
+const OrderList = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filtered, setFiltered] = useState<Order[]>([]);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Order["status"] | undefined>();
-  const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | undefined>();
-  const [dateRange, setDateRange] = useState<DateRange>(null);
-  const [detailOrder, setDetailOrder] = useState<Order | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-
-  // Giả lập phương thức thanh toán cho demo
-  const getPaymentMethod = (id: number): PaymentMethod => {
-    if (id % 3 === 0) return "online";
-    if (id % 3 === 1) return "cod";
-    return "bank";
-  };
-
-  const fetchData = async () => {
-    const data = await orderApi.getAll();
-    setOrders(data);
-    setFiltered(data);
-  };
+  const [loading, setLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [updating, setUpdating] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchData();
+    fetchOrders();
   }, []);
 
-  useEffect(() => {
-    let data = [...orders];
-    if (search) {
-      data = data.filter(
-        (o) =>
-          o.id.toString().includes(search) ||
-          o.customerName.toLowerCase().includes(search.toLowerCase()) ||
-          o.phone.includes(search)
-      );
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const response = await orderService.getAllOrders();
+      setOrders(response.data);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoading(false);
     }
-    if (statusFilter) {
-      data = data.filter((o) => o.status === statusFilter);
-    }
-    if (paymentFilter) {
-      data = data.filter((o) => getPaymentMethod(o.id) === paymentFilter);
-    }
-    if (dateRange && dateRange.length === 2) {
-      data = data.filter((o) => {
-        const d = dayjs(o.createdAt);
-        return d.isAfter(dateRange[0].startOf("day")) && d.isBefore(dateRange[1].endOf("day"));
-      });
-    }
-    setFiltered(data);
-  }, [orders, search, statusFilter, paymentFilter, dateRange]);
-
-  const handleStatusChange = async (id: number, status: Order["status"]) => {
-    Modal.confirm({
-      title: "Xác nhận cập nhật trạng thái?",
-      onOk: async () => {
-        await orderApi.update(id, { status });
-        message.success("Cập nhật trạng thái thành công");
-        fetchData();
-      },
-    });
   };
 
-  const handleDelete = async (id: number, status: Order["status"]) => {
-    if (status !== "pending") {
-      message.warning("Chỉ có thể xóa đơn hàng chờ xử lý!");
-      return;
+  const handleStatusChange = async (orderId: number, newStatusId: number) => {
+    setUpdating(orderId);
+    try {
+      await orderService.updateOrderStatus(orderId, newStatusId, 1);
+      await fetchOrders();
+    } catch (error) {
+      console.error('Error updating status:', error);
+    } finally {
+      setUpdating(null);
     }
-    Modal.confirm({
-      title: "Bạn chắc chắn muốn xóa đơn hàng này?",
-      onOk: async () => {
-        await orderApi.delete(id);
-        message.success("Đã xóa đơn hàng");
-        fetchData();
-      },
-    });
+  };
+
+  const handleViewDetail = async (order: Order) => {
+    try {
+      console.log('Viewing order detail for ID:', order.id);
+      const response = await orderService.getOrderDetail(order.id);
+      console.log('Order detail response:', response);
+      setSelectedOrder(response.data);
+      setDetailVisible(true);
+    } catch (error) {
+      console.error('Error fetching order detail:', error);
+      // Vẫn hiển thị modal với dữ liệu hiện tại nếu API lỗi
+      setSelectedOrder(order);
+      setDetailVisible(true);
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('vi-VN');
+  };
+
+  const getImageUrl = (thumbnail: string) => {
+    if (!thumbnail) return '/placeholder-image.jpg';
+    if (thumbnail.startsWith('http')) return thumbnail;
+    return `http://localhost/storage/products/${thumbnail}`;
   };
 
   const columns = [
-    { title: "Mã đơn", dataIndex: "id", key: "id" },
-    { title: "Tên khách hàng", dataIndex: "customerName", key: "customerName" },
-    { title: "SĐT", dataIndex: "phone", key: "phone" },
-    { title: "Tổng tiền", dataIndex: "total", key: "total", render: (total: number) => total.toLocaleString() + "₫" },
     {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status: Order["status"], record: Order) => (
+      title: 'Mã đơn hàng',
+      dataIndex: 'id',
+      key: 'id',
+      render: (id: number) => `#${id}`,
+    },
+    {
+      title: 'Khách hàng',
+      key: 'customer',
+      render: (record: Order) => (
+        <div>
+          <div style={{ fontWeight: 600 }}>{record.user.name}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>{record.user.email}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Tổng tiền',
+      dataIndex: 'total',
+      key: 'total',
+      render: (total: number) => (
+        <Text strong style={{ color: '#f5222d' }}>
+          {formatPrice(total)}
+        </Text>
+      ),
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'order_status_id',
+      key: 'order_status_id',
+      render: (statusId: number, record: Order) => (
         <Select
-          value={status}
-          onChange={(value) => handleStatusChange(record.id, value as Order["status"])}
-          style={{ width: 150 }}
+          value={statusId}
+          style={{ width: 140 }}
+          onChange={(value) => handleStatusChange(record.id, value)}
+          loading={updating === record.id}
         >
-          {statusOptions.map((opt) => (
-            <Select.Option value={opt.value} key={opt.value}>
-              <Tag color={opt.color}>{opt.label}</Tag>
-            </Select.Option>
+          {Object.entries(statusConfig).map(([key, config]) => (
+            <Option key={key} value={parseInt(key)}>
+              <Tag color={config.color}>{config.label}</Tag>
+            </Option>
           ))}
         </Select>
       ),
     },
     {
-      title: "Phương thức thanh toán",
-      dataIndex: "paymentMethod",
-      key: "paymentMethod",
-      render: (_: unknown, record: Order) => {
-        const method = getPaymentMethod(record.id);
-        return paymentOptions.find((p) => p.value === method)?.label;
-      },
+      title: 'Ngày đặt',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (date: string) => formatDate(date),
     },
-    { title: "Ngày đặt", dataIndex: "createdAt", key: "createdAt" },
     {
-      title: "Hành động",
-      key: "action",
-      render: (_: unknown, record: Order) => (
-        <Space>
-          <Button onClick={() => { setDetailOrder(record); setDetailOpen(true); }}>Chi tiết</Button>
-          <Button danger onClick={() => handleDelete(record.id, record.status)} disabled={record.status !== "pending"}>
-            Xóa
-          </Button>
-        </Space>
+      title: 'Thao tác',
+      key: 'actions',
+      render: (record: Order) => (
+        <Button
+          type="primary"
+          icon={<EyeOutlined />}
+          onClick={() => handleViewDetail(record)}
+        >
+          Chi tiết
+        </Button>
       ),
     },
   ];
 
   return (
-    <Card
-      title={<span style={{ color: "#1890ff", fontWeight: 700, fontSize: 22 }}>Quản lý Đơn hàng</span>}
-      style={{
-        background: "linear-gradient(135deg, #f0f5ff 0%, #e6fffb 100%)",
-        borderRadius: 16,
-        boxShadow: "0 4px 24px rgba(24,144,255,0.08)",
-        marginBottom: 24,
-      }}
-      headStyle={{
-        borderRadius: "16px 16px 0 0",
-        background: "#fff",
-      }}
-    >
-      <Space style={{ marginBottom: 16 }}>
-        <Input.Search
-          placeholder="Tìm kiếm theo mã đơn, tên khách, SĐT"
-          allowClear
-          onSearch={setSearch}
-          style={{ borderRadius: 8, borderColor: "#1890ff" }}
-        />
-        <Select
-          placeholder="Lọc trạng thái"
-          allowClear
-          style={{ width: 150, borderRadius: 8 }}
-          onChange={setStatusFilter}
-        >
-          {statusOptions.map((opt) => (
-            <Select.Option value={opt.value} key={opt.value}>{opt.label}</Select.Option>
-          ))}
-        </Select>
-        <Select
-          placeholder="Lọc thanh toán"
-          allowClear
-          style={{ width: 150, borderRadius: 8 }}
-          onChange={setPaymentFilter}
-        >
-          {paymentOptions.map((opt) => (
-            <Select.Option value={opt.value} key={opt.value}>{opt.label}</Select.Option>
-          ))}
-        </Select>
-        <DatePicker.RangePicker
-          format="YYYY-MM-DD"
-          onChange={(dates) => {
-            if (dates && dates[0] && dates[1]) setDateRange([dates[0], dates[1]]);
-            else setDateRange(null);
-          }}
-          style={{ width: 250, borderRadius: 8 }}
-        />
-      </Space>
-      <Table dataSource={filtered} rowKey="id" columns={columns} pagination={{ pageSize: 5 }} style={{ borderRadius: 12, overflow: "hidden" }} />
+    <div>
+      <Title level={2}>Quản lý đơn hàng</Title>
+
+      <Table
+        columns={columns}
+        dataSource={orders}
+        loading={loading}
+        rowKey="id"
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total) => `Tổng cộng ${total} đơn hàng`,
+        }}
+      />
+
+      {/* Order Detail Modal */}
       <Modal
-        open={detailOpen}
-        onCancel={() => setDetailOpen(false)}
-        footer={<Button onClick={() => setDetailOpen(false)}>Đóng</Button>}
-        title={detailOrder ? `Chi tiết đơn hàng #${detailOrder.id}` : ""}
-        bodyStyle={{ background: "#f0f5ff", borderRadius: 12 }}
+        title={`Chi tiết đơn hàng #${selectedOrder?.id}`}
+        open={detailVisible}
+        onCancel={() => setDetailVisible(false)}
+        width={800}
+        footer={[
+          <Button key="close" onClick={() => setDetailVisible(false)}>
+            Đóng
+          </Button>
+        ]}
       >
-        {detailOrder && (
+        {selectedOrder && (
           <div>
-            <p><b>Khách hàng:</b> {detailOrder.customerName}</p>
-            <p><b>Email:</b> {detailOrder.email}</p>
-            <p><b>SĐT:</b> {detailOrder.phone}</p>
-            <p><b>Địa chỉ:</b> {detailOrder.address}</p>
-            <p><b>Ngày đặt:</b> {detailOrder.createdAt}</p>
-            <p><b>Trạng thái:</b> {statusOptions.find(s => s.value === detailOrder.status)?.label}</p>
-            <p><b>Phương thức thanh toán:</b> {paymentOptions.find(p => p.value === detailOrder.paymentMethod)?.label}</p>
-            <p><b>Tổng tiền:</b> {detailOrder.total.toLocaleString()}₫</p>
-            {detailOrder.note && <p><b>Ghi chú:</b> {detailOrder.note}</p>}
-            <div style={{ marginTop: 16 }}>
-              <b>Danh sách sản phẩm:</b>
-              <Table
-                dataSource={detailOrder.products}
-                rowKey="id"
-                pagination={false}
-                style={{ marginTop: 8 }}
-                columns={[
-                  {
-                    title: "Ảnh",
-                    dataIndex: "image",
-                    render: (url: string) => url ? <img src={url} alt="sp" style={{ width: 50, borderRadius: 8 }} /> : null,
-                  },
-                  { title: "Tên sản phẩm", dataIndex: "name" },
-                  { title: "Số lượng", dataIndex: "quantity" },
-                  { title: "Đơn giá", dataIndex: "price", render: (v: number) => v.toLocaleString() + "₫" },
-                  { title: "Thành tiền", render: (_: unknown, r: { price: number; quantity: number }) => (r.price * r.quantity).toLocaleString() + "₫" },
-                ]}
-              />
-            </div>
+            <Row gutter={16}>
+              {/* Customer Info */}
+              <Col span={12}>
+                <Card title="Thông tin khách hàng" size="small">
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="Tên">{selectedOrder.user.name}</Descriptions.Item>
+                    <Descriptions.Item label="Email">{selectedOrder.user.email}</Descriptions.Item>
+                    <Descriptions.Item label="SĐT">{selectedOrder.phone}</Descriptions.Item>
+                    <Descriptions.Item label="Địa chỉ">{selectedOrder.shipping_address}</Descriptions.Item>
+                  </Descriptions>
+                </Card>
+              </Col>
+
+              {/* Order Info */}
+              <Col span={12}>
+                <Card title="Thông tin đơn hàng" size="small">
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="Trạng thái">
+                      <Tag color={statusConfig[selectedOrder.order_status_id as keyof typeof statusConfig]?.color}>
+                        {statusConfig[selectedOrder.order_status_id as keyof typeof statusConfig]?.label}
+                      </Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Thanh toán">{selectedOrder.payment_method}</Descriptions.Item>
+                    <Descriptions.Item label="Tổng tiền">
+                      <Text strong style={{ color: '#f5222d' }}>
+                        {formatPrice(selectedOrder.total)}
+                      </Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Ngày đặt">{formatDate(selectedOrder.created_at)}</Descriptions.Item>
+                    {selectedOrder.note && (
+                      <Descriptions.Item label="Ghi chú">{selectedOrder.note}</Descriptions.Item>
+                    )}
+                  </Descriptions>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Order Items */}
+            <Card title="Sản phẩm đã đặt" style={{ marginTop: 16 }} size="small">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {selectedOrder.items?.map((item) => (
+                  <Card key={item.id} size="small">
+                    <Row align="middle" gutter={16}>
+                      <Col span={4}>
+                        <Image
+                          src={getImageUrl(item.product?.thumbnail)}
+                          alt={item.product?.name || 'Sản phẩm'}
+                          width={60}
+                          height={60}
+                          style={{ objectFit: 'cover' }}
+                        />
+                      </Col>
+                      <Col span={12}>
+                        <div>
+                          <Text strong>{item.product?.name || 'Sản phẩm'}</Text>
+                          <br />
+                          {item.product_variant && (
+                            <Text type="secondary">{item.product_variant.name}</Text>
+                          )}
+                        </div>
+                      </Col>
+                      <Col span={4}>
+                        <Text>SL: {item.quantity}</Text>
+                      </Col>
+                      <Col span={4}>
+                        <Text strong>{formatPrice(item.price * item.quantity)}</Text>
+                      </Col>
+                    </Row>
+                  </Card>
+                ))}
+              </Space>
+            </Card>
           </div>
         )}
       </Modal>
-    </Card>
+    </div>
   );
-}
+};
+
+export default OrderList;

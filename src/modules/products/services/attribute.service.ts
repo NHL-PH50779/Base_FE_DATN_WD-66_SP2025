@@ -5,7 +5,12 @@ import type { Attribute, AttributeValue } from "../types/attribute.type";
 const parseResponse = (response: any) => {
   let data;
   if (typeof response.data === 'string') {
-    const jsonString = response.data.replace(/^\/\/ bootstrap\/app\.php\n/, '');
+    // Loại bỏ phần bootstrap comment và Git conflict markers
+    const jsonString = response.data
+      .replace(/^\/\/ bootstrap\/app\.php\n/, '')
+      .replace(/<<<<<<< HEAD\n/g, '')
+      .replace(/=======\n/g, '')
+      .replace(/>>>>>>> [^\n]+\n/g, '');
     data = JSON.parse(jsonString);
   } else {
     data = response.data;
@@ -16,8 +21,35 @@ const parseResponse = (response: any) => {
 export const getAllAttributes = async () => {
   try {
     const response = await attributeApi.getAllAttributes();
-    const data = parseResponse(response);
-    return { data: Array.isArray(data) ? data : [] };
+    const attributes = parseResponse(response);
+    
+    // Load values cho từng attribute
+    const attributesWithValues = await Promise.all(
+      attributes.map(async (attribute: Attribute) => {
+        try {
+          const valuesResponse = await getAllAttributeValues();
+          const allValues = valuesResponse.data || [];
+          
+          // Filter values theo attribute_id
+          const attributeValues = allValues.filter((value: AttributeValue) => 
+            value.attribute_id === attribute.id
+          );
+          
+          return {
+            ...attribute,
+            values: attributeValues
+          };
+        } catch (error) {
+          console.error(`Error loading values for attribute ${attribute.id}:`, error);
+          return {
+            ...attribute,
+            values: []
+          };
+        }
+      })
+    );
+    
+    return { data: attributesWithValues };
   } catch (error) {
     console.error("Error fetching attributes:", error);
     return { data: [] };
