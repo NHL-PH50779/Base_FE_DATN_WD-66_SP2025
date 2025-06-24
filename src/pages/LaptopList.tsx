@@ -1,150 +1,137 @@
-import { useEffect, useState } from "react";
-
+// src/pages/admin/laptop/LaptopListPage.tsx
 import {
   Button,
   Card,
-  Form,
-  Input,
-  Modal,
-  Select,
+  Popconfirm,
   Space,
+  Switch,
   Table,
+  Tag,
   message,
 } from "antd";
-import type { Laptop } from "../types/product";
-import { laptopApi } from "../api/laptop.api";
+import { useEffect, useState } from "react";
 
-export default function LaptopList() {
-  const [laptops, setLaptops] = useState<Laptop[]>([]);
-  const [filtered, setFiltered] = useState<Laptop[]>([]);
-  const [filter, setFilter] = useState({ name: "", brand: "", category: "" });
-  const [form] = Form.useForm();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editItem, setEditItem] = useState<Laptop | null>(null);
+import { useNavigate } from "react-router-dom";
+import type { Laptop } from "../types/laptop.type";
+import { deleteLaptop, getAllLaptops, toggleActiveLaptop } from "../services/laptop.service";
 
-  const loadData = async () => {
-    const data = await laptopApi.getAll();
-    setLaptops(data);
-    setFiltered(data);
+const LaptopListPage = () => {
+  const [data, setData] = useState<Laptop[]>([]);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const fetchLaptops = async () => {
+    setLoading(true);
+    try {
+      const res = await getAllLaptops();
+      setData(res.data.data);
+    } catch {
+      message.error("Lỗi khi tải danh sách laptop");
+    } finally {
+      setLoading(false);
+    }
   };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    const filteredData = laptops.filter((laptop) => {
-      return (
-        laptop.name.toLowerCase().includes(filter.name.toLowerCase()) &&
-        laptop.brand.includes(filter.brand) &&
-        laptop.category.includes(filter.category)
-      );
-    });
-    setFiltered(filteredData);
-  }, [filter, laptops]);
 
   const handleDelete = async (id: number) => {
-    await laptopApi.delete(id);
-    message.success("Đã xoá");
-    loadData();
-  };
-
-  const handleEdit = (item: Laptop) => {
-    setEditItem(item);
-    form.setFieldsValue(item);
-    setModalOpen(true);
-  };
-
-  const handleAdd = () => {
-    form.resetFields();
-    setEditItem(null);
-    setModalOpen(true);
-  };
-
-  const handleSubmit = async () => {
-    const values = await form.validateFields();
-    if (editItem) {
-      await laptopApi.update(editItem.id, values);
-      message.success("Cập nhật thành công");
-    } else {
-      await laptopApi.create({ ...values, id: Date.now() });
-      message.success("Thêm mới thành công");
+    try {
+      await deleteLaptop(id);
+      message.success("Đã xóa sản phẩm");
+      fetchLaptops();
+    } catch {
+      message.error("Xóa thất bại");
     }
-    setModalOpen(false);
-    loadData();
   };
+
+  const handleToggle = async (id: number) => {
+    try {
+      await toggleActiveLaptop(id);
+      fetchLaptops();
+    } catch {
+      message.error("Lỗi khi đổi trạng thái");
+    }
+  };
+
+  useEffect(() => {
+    fetchLaptops();
+  }, []);
+
+  const columns = [
+    {
+      title: "Tên",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Thương hiệu",
+      dataIndex: "brand_id",
+      key: "brand_id",
+    },
+    {
+      title: "Danh mục",
+      dataIndex: "category_id",
+      key: "category_id",
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "is_active",
+      render: (val: boolean, record: Laptop) => (
+        <Switch
+          checked={val}
+          onChange={() => handleToggle(record.id!)}
+        />
+      ),
+    },
+    {
+      title: "Hành động",
+      key: "action",
+      render: (_: unknown, record: Laptop) => (
+        <Space>
+          <Button onClick={() => navigate(`/admin/laptops/${record.id}`)}>
+            Chi tiết
+          </Button>
+          <Button onClick={() => navigate(`/admin/laptops/edit/${record.id}`)}>
+            Sửa
+          </Button>
+          <Popconfirm
+            title="Bạn chắc chắn muốn xóa?"
+            onConfirm={() => handleDelete(record.id!)}
+          >
+            <Button danger>Xóa</Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
 
   return (
-    <Card title="Quản lý Laptop" extra={<Button onClick={handleAdd}>Thêm mới</Button>}>
-      <Space style={{ marginBottom: 16 }}>
-        <Input
-          placeholder="Tìm theo tên"
-          onChange={(e) => setFilter({ ...filter, name: e.target.value })}
-        />
-        <Select
-          placeholder="Chọn hãng"
-          allowClear
-          style={{ width: 150 }}
-          onChange={(value) => setFilter({ ...filter, brand: value || "" })}
-        >
-          <Select.Option value="Dell">Dell</Select.Option>
-          <Select.Option value="HP">HP</Select.Option>
-          <Select.Option value="Apple">Apple</Select.Option>
-        </Select>
-        <Select
-          placeholder="Chọn danh mục"
-          allowClear
-          style={{ width: 150 }}
-          onChange={(value) => setFilter({ ...filter, category: value || "" })}
-        >
-          <Select.Option value="Ultrabook">Ultrabook</Select.Option>
-          <Select.Option value="Gaming">Gaming</Select.Option>
-        </Select>
-      </Space>
-
+    <Card
+      title={<span style={{ color: "#1890ff", fontWeight: 700, fontSize: 22 }}>Quản lý Laptop</span>}
+      extra={
+        <Button type="primary" onClick={() => navigate("/admin/laptops/create")}
+          style={{ background: "linear-gradient(90deg,#1890ff 0%,#52c41a 100%)", border: "none" }}>
+          Thêm laptop
+        </Button>
+      }
+      style={{
+        background: "linear-gradient(135deg, #f0f5ff 0%, #e6fffb 100%)",
+        borderRadius: 16,
+        boxShadow: "0 4px 24px rgba(24,144,255,0.08)",
+        marginBottom: 24,
+      }}
+      headStyle={{
+        borderRadius: "16px 16px 0 0",
+        background: "#fff",
+      }}
+    >
       <Table
-        dataSource={filtered}
+        columns={columns}
         rowKey="id"
-        columns={[
-          { title: "Tên", dataIndex: "name" },
-          { title: "Giá", dataIndex: "price" },
-          { title: "Hãng", dataIndex: "brand" },
-          { title: "Danh mục", dataIndex: "category" },
-          {
-            title: "Hành động",
-            render: (_, record) => (
-              <Space>
-                <Button onClick={() => handleEdit(record)}>Sửa</Button>
-                <Button danger onClick={() => handleDelete(record.id)}>
-                  Xoá
-                </Button>
-              </Space>
-            ),
-          },
-        ]}
+        dataSource={data}
+        loading={loading}
+        style={{ borderRadius: 12, overflow: "hidden" }}
       />
-
-      <Modal
-        open={modalOpen}
-        title={editItem ? "Cập nhật Laptop" : "Thêm mới Laptop"}
-        onCancel={() => setModalOpen(false)}
-        onOk={handleSubmit}
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item name="name" label="Tên" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="price" label="Giá" rules={[{ required: true }]}>
-            <Input type="number" />
-          </Form.Item>
-          <Form.Item name="brand" label="Hãng" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="category" label="Danh mục" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
     </Card>
   );
-}
+};
+
+export default LaptopListPage;

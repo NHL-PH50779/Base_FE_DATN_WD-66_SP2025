@@ -3,41 +3,56 @@ import axios, {
   type AxiosRequestConfig,
   type AxiosResponse,
 } from "axios";
-// import { NEXT_PUBLIC_API_URL, NEXT_PUBLIC_AUTH_API_URL } from "./env";
-// import { clearUserInfoAndToken, getCommonStateFromLocalStorage } from "./utils";
 
 interface CustomAxiosRequestConfig extends AxiosRequestConfig {
   isAuthApi?: boolean;
 }
 
-const axiosInstance = axios.create({
-  baseURL: process.env.PUBLIC_API_URL,
+// Cấu hình API URL cho Laravel backend
+const API_URL = "http://127.0.0.1:8000/api";
+
+export const axiosInstance = axios.create({
+  baseURL: API_URL,
   timeout: 20000,
   headers: {
     "Content-Type": "application/json",
+    "Accept": "application/json",
   },
 });
 
+// Xử lý response
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error) => {
-    // log error ra để kiểm tra rồi sử lý
-
+    console.error("API Error:", error.response?.data || error.message);
+    
+    // Nếu lỗi 401 (Unauthorized), xóa token và redirect về login
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Có thể redirect về trang login ở đây
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    
+    // Nếu lỗi 404 và là API login/register, hiển thị thông báo backend offline
+    if (error.response?.status === 404 && 
+        (error.config?.url?.includes('/login') || error.config?.url?.includes('/register'))) {
+      console.error("Backend server không khả dụng. Vui lòng kiểm tra server Laravel.");
+    }
+    
     return Promise.reject(error);
   }
 );
 
+// Xử lý request - tự động thêm token
 axiosInstance.interceptors.request.use(
   (config) => {
-    // const token = getCommonStateFromLocalStorage()?.token;
-    // if (token && config.headers) {
-    //   config.headers.set(
-    //     "Authorization",
-    //     (config as CustomAxiosRequestConfig).isAuthApi
-    //       ? `Bearer ${token}`
-    //       : token
-    //   );
-    // }
+    const token = localStorage.getItem('token');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error: AxiosError) => {
