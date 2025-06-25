@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Table, Button, Space, Input, Modal, message, Card, Form, Tag } from "antd";
-import { EditOutlined, DeleteOutlined, PlusOutlined, PlusCircleOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined, PlusOutlined, PlusCircleOutlined, MinusCircleOutlined, AppstoreAddOutlined } from "@ant-design/icons";
 import { getAllAttributes, createAttribute, updateAttribute, deleteAttribute, createAttributeValue, deleteAttributeValue } from "../services/attribute.service";
 import type { Attribute, AttributeValue } from "../types/attribute.type";
 
@@ -11,6 +11,9 @@ export default function AttributeList() {
   const [editingAttribute, setEditingAttribute] = useState<Attribute | null>(null);
   const [form] = Form.useForm();
   const [attributeValues, setAttributeValues] = useState<string[]>(['']);
+  const [addValueModalVisible, setAddValueModalVisible] = useState(false);
+  const [selectedAttributeForValue, setSelectedAttributeForValue] = useState<Attribute | null>(null);
+  const [newValueForm] = Form.useForm();
 
   const fetchAttributes = async () => {
     setLoading(true);
@@ -154,6 +157,31 @@ export default function AttributeList() {
     setAttributeValues(newValues);
   };
 
+  const handleAddValueToExisting = (attribute: Attribute) => {
+    setSelectedAttributeForValue(attribute);
+    newValueForm.resetFields();
+    setAddValueModalVisible(true);
+  };
+
+  const handleSubmitNewValue = async (values: { value: string }) => {
+    if (!selectedAttributeForValue) return;
+    
+    try {
+      await createAttributeValue({
+        attribute_id: selectedAttributeForValue.id!,
+        value: values.value
+      });
+      
+      message.success(`Đã thêm giá trị "${values.value}" vào thuộc tính "${selectedAttributeForValue.name}"`);
+      setAddValueModalVisible(false);
+      newValueForm.resetFields();
+      fetchAttributes();
+    } catch (error) {
+      console.error("Error adding value:", error);
+      message.error("Lỗi khi thêm giá trị");
+    }
+  };
+
   const columns = [
     {
       title: "Tên thuộc tính",
@@ -184,6 +212,13 @@ export default function AttributeList() {
       key: "action",
       render: (_: any, record: Attribute) => (
         <Space>
+          <Button 
+            icon={<AppstoreAddOutlined />} 
+            onClick={() => handleAddValueToExisting(record)}
+            type="dashed"
+          >
+            Thêm giá trị
+          </Button>
           <Button 
             icon={<EditOutlined />} 
             onClick={() => handleEdit(record)}
@@ -284,6 +319,42 @@ export default function AttributeList() {
               Thêm giá trị
             </Button>
           </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Modal thêm giá trị mới vào thuộc tính có sẵn */}
+      <Modal
+        title={`Thêm giá trị mới cho "${selectedAttributeForValue?.name}"`}
+        open={addValueModalVisible}
+        onCancel={() => {
+          setAddValueModalVisible(false);
+          newValueForm.resetFields();
+        }}
+        onOk={() => newValueForm.submit()}
+        okText="Thêm giá trị"
+        cancelText="Hủy"
+      >
+        <Form form={newValueForm} onFinish={handleSubmitNewValue} layout="vertical">
+          <Form.Item
+            name="value"
+            label="Giá trị mới"
+            rules={[{ required: true, message: 'Vui lòng nhập giá trị!' }]}
+          >
+            <Input placeholder="Nhập giá trị mới" />
+          </Form.Item>
+          
+          {selectedAttributeForValue && (
+            <div style={{ marginBottom: 16 }}>
+              <p><strong>Giá trị hiện có:</strong></p>
+              <div>
+                {selectedAttributeForValue.values?.map(value => (
+                  <Tag key={value.id} style={{ marginBottom: 4 }}>
+                    {value.value}
+                  </Tag>
+                ))}
+              </div>
+            </div>
+          )}
         </Form>
       </Modal>
     </Card>

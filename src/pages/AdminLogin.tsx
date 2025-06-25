@@ -18,8 +18,8 @@ const AdminLogin = () => {
     try {
       const result = await authService.login(values);
       
-      // Kiểm tra role admin
-      if (result.user?.role !== 'admin') {
+      // Kiểm tra role admin hoặc super_admin
+      if (result.user?.role !== 'admin' && result.user?.role !== 'super_admin') {
         setError('Bạn không có quyền truy cập trang quản trị');
         await authService.logout();
         return;

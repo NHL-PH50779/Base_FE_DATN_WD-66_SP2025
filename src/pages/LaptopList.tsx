@@ -9,6 +9,7 @@ import {
   Tag,
   message,
 } from "antd";
+import { DeleteOutlined } from '@ant-design/icons';
 import { useEffect, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
@@ -32,10 +33,10 @@ const LaptopListPage = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleSoftDelete = async (id: number) => {
     try {
-      await deleteLaptop(id);
-      message.success("Đã xóa sản phẩm");
+      await deleteLaptop(id); // This will be soft delete
+      message.success("Đã chuyển vào thùng rác");
       fetchLaptops();
     } catch {
       message.error("Xóa thất bại");
@@ -93,8 +94,8 @@ const LaptopListPage = () => {
             Sửa
           </Button>
           <Popconfirm
-            title="Bạn chắc chắn muốn xóa?"
-            onConfirm={() => handleDelete(record.id!)}
+            title="Chuyển vào thùng rác?"
+            onConfirm={() => handleSoftDelete(record.id!)}
           >
             <Button danger>Xóa</Button>
           </Popconfirm>
@@ -107,10 +108,19 @@ const LaptopListPage = () => {
     <Card
       title={<span style={{ color: "#1890ff", fontWeight: 700, fontSize: 22 }}>Quản lý Laptop</span>}
       extra={
-        <Button type="primary" onClick={() => navigate("/admin/laptops/create")}
-          style={{ background: "linear-gradient(90deg,#1890ff 0%,#52c41a 100%)", border: "none" }}>
-          Thêm laptop
-        </Button>
+        <Space>
+          <Button 
+            icon={<DeleteOutlined />}
+            onClick={() => navigate("/admin/products/trashed")}
+            style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
+          >
+            Thùng rác
+          </Button>
+          <Button type="primary" onClick={() => navigate("/admin/laptops/create")}
+            style={{ background: "linear-gradient(90deg,#1890ff 0%,#52c41a 100%)", border: "none" }}>
+            Thêm laptop
+          </Button>
+        </Space>
       }
       style={{
         background: "linear-gradient(135deg, #f0f5ff 0%, #e6fffb 100%)",

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Table, Button, Space, Tag, Input, Modal, message, Card, Switch } from "antd";
-import { EditOutlined, DeleteOutlined, PlusOutlined, UndoOutlined, SearchOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { getAllProducts, deleteProduct, restoreProduct, toggleActiveProduct, getTrashedProducts, searchProducts } from "../services/product.service";
+import { getAllProducts, deleteProduct, toggleActiveProduct, searchProducts } from "../services/product.service";
 import { getAllBrands } from "../services/brand.service";
 import { getAllCategories } from "../services/category.service";
 import type { Product } from "../types/product.type";
@@ -11,27 +11,17 @@ export default function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]); // Lưu tất cả sản phẩm
   const [loading, setLoading] = useState(false);
-  const [showTrashed, setShowTrashed] = useState(false);
+
   const [searchKeyword, setSearchKeyword] = useState("");
   const [brands, setBrands] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const navigate = useNavigate();
 
-  const fetchAllData = async (trashed = false) => {
+  const fetchAllData = async () => {
     setLoading(true);
     try {
       // Call products API first
-      let productsResponse;
-      if (trashed) {
-        try {
-          productsResponse = await getTrashedProducts();
-        } catch (error) {
-          console.log("Trashed products API not available, showing empty list");
-          productsResponse = { data: [] };
-        }
-      } else {
-        productsResponse = await getAllProducts();
-      }
+      const productsResponse = await getAllProducts();
       
       console.log("Products response:", productsResponse);
       const productData = productsResponse.data || [];
@@ -58,8 +48,8 @@ export default function ProductList() {
   };
 
   useEffect(() => {
-    fetchAllData(showTrashed);
-  }, [showTrashed]);
+    fetchAllData();
+  }, []);
 
   // Tìm kiếm local (không gọi API)
   const handleSearch = (value: string) => {
@@ -103,7 +93,7 @@ export default function ProductList() {
         try {
           await deleteProduct(id);
           message.success("Xóa sản phẩm thành công");
-          fetchAllData(showTrashed);
+          fetchAllData();
         } catch (error) {
           console.error("Error deleting product:", error);
           message.error("Lỗi khi xóa sản phẩm");
@@ -112,22 +102,13 @@ export default function ProductList() {
     });
   };
 
-  const handleRestore = async (id: number) => {
-    try {
-      await restoreProduct(id);
-      message.success("Khôi phục sản phẩm thành công");
-      fetchAllData(showTrashed);
-    } catch (error) {
-      console.error("Error restoring product:", error);
-      message.error("Lỗi khi khôi phục sản phẩm");
-    }
-  };
+
 
   const handleToggleActive = async (id: number, currentStatus: boolean) => {
     try {
       await toggleActiveProduct(id);
       message.success(`Đã ${currentStatus ? 'tắt' : 'bật'} sản phẩm`);
-      fetchAllData(showTrashed);
+      fetchAllData();
     } catch (error) {
       console.error("Error toggling product status:", error);
       message.error("Lỗi khi thay đổi trạng thái sản phẩm");
@@ -187,7 +168,7 @@ export default function ProductList() {
         <Switch 
           checked={isActive} 
           onChange={() => handleToggleActive(record.id!, isActive)}
-          disabled={showTrashed}
+
         />
       ),
     },
@@ -196,31 +177,19 @@ export default function ProductList() {
       key: "action",
       render: (_: any, record: Product) => (
         <Space>
-          {showTrashed ? (
-            <Button 
-              icon={<UndoOutlined />} 
-              onClick={() => handleRestore(record.id!)}
-              type="primary"
-            >
-              Khôi phục
-            </Button>
-          ) : (
-            <>
-              <Button 
-                icon={<EditOutlined />} 
-                onClick={() => navigate(`/admin/products/edit/${record.id}`)}
-              >
-                Sửa
-              </Button>
-              <Button 
-                icon={<DeleteOutlined />} 
-                danger 
-                onClick={() => handleDelete(record.id!)}
-              >
-                Xóa
-              </Button>
-            </>
-          )}
+          <Button 
+            icon={<EditOutlined />} 
+            onClick={() => navigate(`/admin/products/edit/${record.id}`)}
+          >
+            Sửa
+          </Button>
+          <Button 
+            icon={<DeleteOutlined />} 
+            danger 
+            onClick={() => handleDelete(record.id!)}
+          >
+            Xóa
+          </Button>
         </Space>
       ),
     },
@@ -243,6 +212,7 @@ export default function ProductList() {
       }}
       extra={
         <Space>
+
           <Button
             type="primary"
             icon={<PlusOutlined />}

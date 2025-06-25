@@ -126,6 +126,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
                 status: 'done',
                 url: thumbnailUrl
               }]);
+              
+              // Set form field value
+              form.setFieldValue('thumbnail', thumbnailUrl);
             }
           }
           setLoading(false);
@@ -305,6 +308,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         // Sync name và Name
         if (field === 'name') {
           updated.Name = value;
+          updated.name = value;
         }
         return updated;
       }
@@ -332,11 +336,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         
         if (validVariants.length > 0) {
           productData.variants = validVariants.map(variant => ({
+            id: variant.id, // Thêm ID để backend biết cập nhật variant nào
             sku: variant.sku,
-            Name: variant.Name || variant.name || variant.sku, // Database field 'Name' (uppercase N)
+            Name: variant.Name || variant.name || variant.sku,
             price: variant.price,
-            stock: variant.stock, // Database field 'stock'
-            // Bỏ is_active vì database không có cột này
+            stock: variant.stock,
             attributes: variant.attributes || []
           }));
         }
@@ -349,6 +353,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         if (fileList.length > 0 && fileList[0].url) {
           productData.thumbnail = fileList[0].url;
         }
+        console.log('Updating product with data:', productData); // Debug
         await updateProduct(parseInt(id), productData);
         message.success('Cập nhật sản phẩm thành công');
       } else {
@@ -388,7 +393,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
       key: 'name',
       render: (text: string, record: ProductVariant) => (
         <Input
-          value={text}
+          value={record.Name || record.name || text}
           onChange={(e) => handleVariantChange(record.id, 'name', e.target.value)}
           placeholder="Tên biến thể"
         />
@@ -627,7 +632,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
 
         <Divider orientation="left">Biến thể sản phẩm</Divider>
         
-        <Tabs defaultActiveKey="1" items={tabItems} />
+        {!isEdit && <Tabs defaultActiveKey="1" items={tabItems} />}
+        {isEdit && (
+          <div style={{ marginBottom: 16, padding: 16, background: '#f0f2f5', borderRadius: 8 }}>
+            <p style={{ margin: 0, color: '#666' }}>
+              📝 <strong>Chế độ chỉnh sửa:</strong> Bạn có thể chỉnh sửa thông tin các biến thể hiện có bên dưới.
+            </p>
+          </div>
+        )}
         
         <div style={{ marginTop: 16 }}>
           <Table

@@ -81,26 +81,7 @@ export const searchProducts = async (keyword: string) => {
   }
 };
 
-export const getTrashedProducts = async () => {
-  try {
-    const response = await productApi.getTrashed();
-    const data = parseResponse(response);
-    return { data: Array.isArray(data) ? data : [] };
-  } catch (error) {
-    console.error("Error fetching trashed products:", error);
-    return { data: [] };
-  }
-};
 
-export const restoreProduct = async (id: number) => {
-  try {
-    const response = await productApi.restore(id);
-    return parseResponse(response);
-  } catch (error) {
-    console.error(`Error restoring product with id ${id}:`, error);
-    throw error;
-  }
-};
 
 export const toggleActiveProduct = async (id: number) => {
   try {

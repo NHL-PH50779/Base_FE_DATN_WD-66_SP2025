@@ -43,11 +43,20 @@ interface Order {
   payment_status_id: number;
   created_at: string;
   updated_at: string;
-  user: {
+  user?: {
     name: string;
     email: string;
   };
-  items: OrderItem[];
+  items?: OrderItem[];
+  order_items?: OrderItem[];
+  phone?: string;
+  shipping_address?: string;
+  payment_method?: string;
+  note?: string;
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+  address?: string;
 }
 
 const statusConfig = {
@@ -93,19 +102,13 @@ const OrderList = () => {
     }
   };
 
-  const handleViewDetail = async (order: Order) => {
-    try {
-      console.log('Viewing order detail for ID:', order.id);
-      const response = await orderService.getOrderDetail(order.id);
-      console.log('Order detail response:', response);
-      setSelectedOrder(response.data);
-      setDetailVisible(true);
-    } catch (error) {
-      console.error('Error fetching order detail:', error);
-      // Vẫn hiển thị modal với dữ liệu hiện tại nếu API lỗi
-      setSelectedOrder(order);
-      setDetailVisible(true);
-    }
+  const handleViewDetail = (order: Order) => {
+    console.log('Viewing order:', order);
+    setSelectedOrder(order);
+    setDetailVisible(true);
+    
+    // Tạm thời disable API call vì backend không trả về đầy đủ dữ liệu
+    // TODO: Sửa backend API để trả về đầy đủ thông tin đơn hàng
   };
 
   const formatPrice = (price: number) => {
@@ -137,8 +140,8 @@ const OrderList = () => {
       key: 'customer',
       render: (record: Order) => (
         <div>
-          <div style={{ fontWeight: 600 }}>{record.user.name}</div>
-          <div style={{ fontSize: '12px', color: '#666' }}>{record.user.email}</div>
+          <div style={{ fontWeight: 600 }}>{record.user?.name || 'Không có'}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>{record.user?.email || 'Không có'}</div>
         </div>
       ),
     },
@@ -211,7 +214,7 @@ const OrderList = () => {
 
       {/* Order Detail Modal */}
       <Modal
-        title={`Chi tiết đơn hàng #${selectedOrder?.id}`}
+        title={`Chi tiết đơn hàng #${selectedOrder?.id || 'N/A'}`}
         open={detailVisible}
         onCancel={() => setDetailVisible(false)}
         width={800}
@@ -228,10 +231,10 @@ const OrderList = () => {
               <Col span={12}>
                 <Card title="Thông tin khách hàng" size="small">
                   <Descriptions column={1} size="small">
-                    <Descriptions.Item label="Tên">{selectedOrder.user.name}</Descriptions.Item>
-                    <Descriptions.Item label="Email">{selectedOrder.user.email}</Descriptions.Item>
-                    <Descriptions.Item label="SĐT">{selectedOrder.phone}</Descriptions.Item>
-                    <Descriptions.Item label="Địa chỉ">{selectedOrder.shipping_address}</Descriptions.Item>
+                    <Descriptions.Item label="Tên">{selectedOrder.user?.name || selectedOrder.customer_name || 'Không có'}</Descriptions.Item>
+                    <Descriptions.Item label="Email">{selectedOrder.user?.email || selectedOrder.customer_email || 'Không có'}</Descriptions.Item>
+                    <Descriptions.Item label="SĐT">{selectedOrder.phone || selectedOrder.customer_phone || 'Không có'}</Descriptions.Item>
+                    <Descriptions.Item label="Địa chỉ">{selectedOrder.shipping_address || selectedOrder.address || 'Không có'}</Descriptions.Item>
                   </Descriptions>
                 </Card>
               </Col>
@@ -242,16 +245,18 @@ const OrderList = () => {
                   <Descriptions column={1} size="small">
                     <Descriptions.Item label="Trạng thái">
                       <Tag color={statusConfig[selectedOrder.order_status_id as keyof typeof statusConfig]?.color}>
-                        {statusConfig[selectedOrder.order_status_id as keyof typeof statusConfig]?.label}
+                        {statusConfig[selectedOrder.order_status_id as keyof typeof statusConfig]?.label || 'Không xác định'}
                       </Tag>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Thanh toán">{selectedOrder.payment_method}</Descriptions.Item>
+                    <Descriptions.Item label="Thanh toán">{selectedOrder.payment_method || 'Chưa xác định'}</Descriptions.Item>
                     <Descriptions.Item label="Tổng tiền">
                       <Text strong style={{ color: '#f5222d' }}>
-                        {formatPrice(selectedOrder.total)}
+                        {selectedOrder.total ? formatPrice(Number(selectedOrder.total)) : '0 ₫'}
                       </Text>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Ngày đặt">{formatDate(selectedOrder.created_at)}</Descriptions.Item>
+                    <Descriptions.Item label="Ngày đặt">
+                      {selectedOrder.created_at ? formatDate(selectedOrder.created_at) : 'Không xác định'}
+                    </Descriptions.Item>
                     {selectedOrder.note && (
                       <Descriptions.Item label="Ghi chú">{selectedOrder.note}</Descriptions.Item>
                     )}
@@ -263,36 +268,45 @@ const OrderList = () => {
             {/* Order Items */}
             <Card title="Sản phẩm đã đặt" style={{ marginTop: 16 }} size="small">
               <Space direction="vertical" style={{ width: '100%' }}>
-                {selectedOrder.items?.map((item) => (
-                  <Card key={item.id} size="small">
+                {(selectedOrder.items || selectedOrder.order_items)?.length > 0 ? (
+                  (selectedOrder.items || selectedOrder.order_items)?.map((item, index) => (
+                  <Card key={item.id || index} size="small">
                     <Row align="middle" gutter={16}>
                       <Col span={4}>
                         <Image
-                          src={getImageUrl(item.product?.thumbnail)}
-                          alt={item.product?.name || 'Sản phẩm'}
+                          src={getImageUrl(item.product?.thumbnail || item.product_variant?.product?.thumbnail)}
+                          alt={item.product?.name || item.product_variant?.product?.name || 'Sản phẩm'}
                           width={60}
                           height={60}
                           style={{ objectFit: 'cover' }}
+                          fallback="/placeholder-image.jpg"
                         />
                       </Col>
                       <Col span={12}>
                         <div>
-                          <Text strong>{item.product?.name || 'Sản phẩm'}</Text>
+                          <Text strong>{item.product?.name || item.product_variant?.product?.name || 'Sản phẩm'}</Text>
                           <br />
-                          {item.product_variant && (
-                            <Text type="secondary">{item.product_variant.name}</Text>
+                          {(item.product_variant || item.variant) && (
+                            <Text type="secondary">
+                              {item.product_variant?.Name || item.product_variant?.name || item.variant?.Name || item.variant?.name || 'Biến thể'}
+                            </Text>
                           )}
                         </div>
                       </Col>
                       <Col span={4}>
-                        <Text>SL: {item.quantity}</Text>
+                        <Text>SL: {item.quantity || 1}</Text>
                       </Col>
                       <Col span={4}>
-                        <Text strong>{formatPrice(item.price * item.quantity)}</Text>
+                        <Text strong>{formatPrice((item.price || 0) * (item.quantity || 1))}</Text>
                       </Col>
                     </Row>
                   </Card>
-                ))}
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                    Không có sản phẩm nào trong đơn hàng này
+                  </div>
+                )}
               </Space>
             </Card>
           </div>

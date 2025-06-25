@@ -38,16 +38,7 @@ export const productApi = {
     return response;
   },
   
-  getTrashed: async () => {
-    const response = await axiosInstance.get(`/products/trashed`);
-    return response;
-  },
-  
-  restore: async (id: number) => {
-    const response = await axiosInstance.put(`/products/restore/${id}`);
-    return response;
-  },
-  
+
   toggleActive: async (id: number) => {
     const response = await axiosInstance.put(`/products/toggle-active/${id}`);
     return response;

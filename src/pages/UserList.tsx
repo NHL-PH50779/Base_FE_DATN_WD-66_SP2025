@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Table, Button, Space, Tag, Modal, message, Card, Select, Form, Input } from "antd";
-import { EditOutlined, DeleteOutlined, UserOutlined, PlusOutlined, EyeOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined, UserOutlined, PlusOutlined, EyeOutlined, ReloadOutlined } from "@ant-design/icons";
 import { userService } from "../services/user.service";
 
 const { Option } = Select;
@@ -9,7 +9,7 @@ interface User {
   id: number;
   name: string;
   email: string;
-  role: string;
+  role: 'client' | 'admin' | 'super_admin';
   created_at: string;
 }
 
@@ -21,13 +21,29 @@ export default function UserList() {
   const [viewingUser, setViewingUser] = useState<User | null>(null);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [form] = Form.useForm();
+  
+  // Lấy role của user hiện tại
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUserRole = currentUser.role;
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (forceRefresh = false) => {
     setLoading(true);
     try {
       const response = await userService.getAllUsers();
-      console.log('Users response:', response);
+      console.log('Users API response:', response);
+      console.log('Users data:', response.data);
+      
+      // Debug: Kiểm tra user atun@gmail.com
+      const atunUser = response.data?.find((user: User) => user.email === 'atun@gmail.com');
+      if (atunUser) {
+        console.log('Found atun user:', atunUser);
+      }
+      
       setUsers(response.data || []);
+      
+      if (forceRefresh) {
+        message.success('Dữ liệu đã được cập nhật!');
+      }
     } catch (error) {
       console.error("Error fetching users:", error);
       message.error("Không thể tải danh sách người dùng");
@@ -65,7 +81,11 @@ export default function UserList() {
     try {
       if (editingUser) {
         await userService.updateUser(editingUser.id, values);
-        message.success('Cập nhật người dùng thành công');
+        if (editingUser.role !== values.role) {
+          message.success(`Đã thay đổi vai trò thành ${values.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}`);
+        } else {
+          message.success('Cập nhật người dùng thành công');
+        }
       } else {
         await userService.createUser(values);
         message.success('Thêm người dùng thành công');
@@ -108,11 +128,19 @@ export default function UserList() {
       title: "Vai trò",
       dataIndex: "role",
       key: "role",
-      render: (role: string) => (
-        <Tag color={role === 'admin' ? 'red' : 'blue'}>
-          {role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}
-        </Tag>
-      ),
+      render: (role: string) => {
+        const roleConfig = {
+          'super_admin': { color: 'purple', text: 'Siêu quản trị' },
+          'admin': { color: 'red', text: 'Quản trị viên' },
+          'client': { color: 'blue', text: 'Khách hàng' }
+        };
+        const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.client;
+        return (
+          <Tag color={config.color}>
+            {config.text}
+          </Tag>
+        );
+      },
     },
     {
       title: "Ngày tạo",
@@ -126,14 +154,17 @@ export default function UserList() {
       width: 200,
       render: (_: any, record: User) => (
         <Space>
-          <Button
-            type="primary"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleView(record)}
-          >
-            Xem
-          </Button>
+          {/* Chỉ super_admin mới được xem thông tin */}
+          {currentUserRole === 'super_admin' && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => handleView(record)}
+            >
+              Xem
+            </Button>
+          )}
           <Button
             type="default"
             size="small"
@@ -148,7 +179,10 @@ export default function UserList() {
             size="small"
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
-            disabled={record.role === 'admin'}
+            disabled={
+              // Admin chỉ xóa được client, super_admin xóa được tất cả
+              currentUserRole === 'admin' ? record.role !== 'client' : false
+            }
           >
             Xóa
           </Button>
@@ -166,13 +200,22 @@ export default function UserList() {
             Quản lý người dùng
           </span>
         </Space>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleAdd}
-        >
-          Thêm người dùng
-        </Button>
+        <Space>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => fetchUsers(true)}
+            loading={loading}
+          >
+            Làm mới
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAdd}
+          >
+            Thêm người dùng
+          </Button>
+        </Space>
       </div>
 
       <Table
@@ -254,7 +297,14 @@ export default function UserList() {
           >
             <Select placeholder="Chọn vai trò">
               <Option value="client">Khách hàng</Option>
-              <Option value="admin">Quản trị viên</Option>
+              {/* Admin có thể tạo admin khác */}
+              {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
+                <Option value="admin">Quản trị viên</Option>
+              )}
+              {/* Chỉ super_admin mới tạo được super_admin khác */}
+              {currentUserRole === 'super_admin' && (
+                <Option value="super_admin">Siêu quản trị</Option>
+              )}
             </Select>
           </Form.Item>
 
@@ -288,9 +338,19 @@ export default function UserList() {
             <p><strong>Tên:</strong> {viewingUser.name}</p>
             <p><strong>Email:</strong> {viewingUser.email}</p>
             <p><strong>Vai trò:</strong> 
-              <Tag color={viewingUser.role === 'admin' ? 'red' : 'blue'} style={{ marginLeft: 8 }}>
-                {viewingUser.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}
-              </Tag>
+              {(() => {
+                const roleConfig = {
+                  'super_admin': { color: 'purple', text: 'Siêu quản trị' },
+                  'admin': { color: 'red', text: 'Quản trị viên' },
+                  'client': { color: 'blue', text: 'Khách hàng' }
+                };
+                const config = roleConfig[viewingUser.role as keyof typeof roleConfig] || roleConfig.client;
+                return (
+                  <Tag color={config.color} style={{ marginLeft: 8 }}>
+                    {config.text}
+                  </Tag>
+                );
+              })()} 
             </p>
             <p><strong>Ngày tạo:</strong> {new Date(viewingUser.created_at).toLocaleString('vi-VN')}</p>
           </div>

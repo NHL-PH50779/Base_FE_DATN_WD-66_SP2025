@@ -43,9 +43,9 @@ const AdminRegister = () => {
       }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Title level={2} style={{ color: '#1890ff', marginBottom: 8 }}>
-            Đăng ký Admin
+            Đăng ký tài khoản
           </Title>
-          <Text type="secondary">Tạo tài khoản quản trị</Text>
+          <Text type="secondary">Tạo tài khoản khách hàng mới</Text>
         </div>
 
         {error && (
@@ -62,7 +62,7 @@ const AdminRegister = () => {
           onFinish={handleSubmit}
           layout="vertical"
           size="large"
-          initialValues={{ role: 'admin' }}
+          initialValues={{ role: 'client' }}
         >
           <Form.Item
             name="name"
@@ -89,15 +89,9 @@ const AdminRegister = () => {
             />
           </Form.Item>
 
-          <Form.Item
-            name="role"
-            label="Vai trò"
-            rules={[{ required: true, message: 'Vui lòng chọn vai trò!' }]}
-          >
-            <Select placeholder="Chọn vai trò">
-              <Option value="admin">Admin</Option>
-              <Option value="user">User</Option>
-            </Select>
+          {/* Role mặc định là client, chỉ admin mới có thể thay đổi sau */}
+          <Form.Item name="role" hidden initialValue="client">
+            <Input />
           </Form.Item>
 
           <Form.Item

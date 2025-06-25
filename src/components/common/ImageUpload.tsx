@@ -1,102 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Button, Image, message } from 'antd';
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { UploadFile, UploadProps } from 'antd';
+import axios from 'axios';
 
 interface ImageUploadProps {
   value?: string;
   onChange?: (url: string | null) => void;
-  maxCount?: number;
-  accept?: string;
-  listType?: 'text' | 'picture' | 'picture-card';
 }
 
-const ImageUpload: React.FC<ImageUploadProps> = ({
-  value,
-  onChange,
-  maxCount = 1,
-  accept = 'image/*',
-  listType = 'picture-card'
-}) => {
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(value || null);
+const ImageUpload: React.FC<ImageUploadProps> = ({ value, onChange }) => {
+  const [imageUrl, setImageUrl] = useState<string | null>(value || null);
+  const [uploading, setUploading] = useState(false);
+  
+  // Sync with props value
+  React.useEffect(() => {
+    setImageUrl(value || null);
+  }, [value]);
 
-  const handleUpload: UploadProps['customRequest'] = async (options) => {
-    const { file, onSuccess, onError } = options;
+  const handleUpload = async (file: File) => {
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      message.error('Chỉ được upload file ảnh!');
+      return false;
+    }
+    
+    if (file.size > 2 * 1024 * 1024) {
+      message.error('Ảnh phải nhỏ hơn 2MB!');
+      return false;
+    }
+
+    setUploading(true);
     
     try {
       const formData = new FormData();
-      formData.append('thumbnail', file as File);
+      formData.append('thumbnail', file);
 
-      const response = await fetch('http://127.0.0.1:8000/api/upload', {
-        method: 'POST',
+      const token = localStorage.getItem('token');
+      const response = await axios.post('http://127.0.0.1:8000/api/upload', formData, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: formData,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const result = await response.json();
-      const imageUrl = result.url || result.data?.url;
-
-      if (imageUrl) {
-        setPreviewUrl(imageUrl);
-        onChange?.(imageUrl);
-        onSuccess?.(result);
+      const url = response.data.data?.url || response.data.url;
+      if (url) {
+        setImageUrl(url);
+        onChange?.(url);
         message.success('Upload ảnh thành công!');
-      } else {
-        throw new Error('No URL returned');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      onError?.(error as Error);
-      message.error('Upload ảnh thất bại!');
+      const errorMsg = error.response?.data?.message || 'Upload thất bại!';
+      message.error(errorMsg);
+    } finally {
+      setUploading(false);
     }
+
+    return false; // Prevent default upload
   };
 
   const handleRemove = () => {
-    setPreviewUrl(null);
-    setFileList([]);
+    setImageUrl(null);
     onChange?.(null);
   };
 
-  const uploadProps: UploadProps = {
-    customRequest: handleUpload,
-    fileList,
-    maxCount,
-    accept,
-    listType,
-    showUploadList: false,
-    beforeUpload: (file) => {
-      const isImage = file.type.startsWith('image/');
-      if (!isImage) {
-        message.error('Chỉ được upload file ảnh!');
-        return false;
-      }
-      
-      const isLt2M = file.size / 1024 / 1024 < 2;
-      if (!isLt2M) {
-        message.error('Ảnh phải nhỏ hơn 2MB!');
-        return false;
-      }
-      
-      return true;
-    },
-    onChange: (info) => {
-      setFileList(info.fileList);
-    },
-  };
-
   return (
-    <div className="image-upload">
-      {previewUrl ? (
-        <div className="relative inline-block">
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      {imageUrl ? (
+        <div style={{ position: 'relative', display: 'inline-block' }}>
           <Image
-            src={previewUrl}
+            src={imageUrl}
             alt="Preview"
             width={100}
             height={100}
@@ -107,14 +81,33 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
             danger
             icon={<DeleteOutlined />}
             onClick={handleRemove}
-            className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+            style={{
+              position: 'absolute',
+              top: -8,
+              right: -8,
+              backgroundColor: '#ff4d4f',
+              color: 'white',
+              borderRadius: '50%',
+              width: 24,
+              height: 24,
+              minWidth: 24,
+              padding: 0
+            }}
             size="small"
           />
         </div>
       ) : (
-        <Upload {...uploadProps}>
-          <Button icon={<UploadOutlined />}>
-            Upload ảnh
+        <Upload
+          beforeUpload={handleUpload}
+          showUploadList={false}
+          accept="image/*"
+        >
+          <Button 
+            icon={<UploadOutlined />} 
+            loading={uploading}
+            disabled={uploading}
+          >
+            {uploading ? 'Đang upload...' : 'Upload ảnh'}
           </Button>
         </Upload>
       )}

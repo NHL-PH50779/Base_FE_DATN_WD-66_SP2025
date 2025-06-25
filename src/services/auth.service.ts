@@ -101,6 +101,16 @@ export const authService = {
   
   isAdmin: () => {
     const user = authService.getUser();
-    return user?.role === 'admin';
+    return user?.role === 'admin' || user?.role === 'super_admin';
+  },
+  
+  isSuperAdmin: () => {
+    const user = authService.getUser();
+    return user?.role === 'super_admin';
+  },
+  
+  getUserRole: () => {
+    const user = authService.getUser();
+    return user?.role || 'client';
   }
 };

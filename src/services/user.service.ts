@@ -18,7 +18,9 @@ const parseResponse = (response: any) => {
 export const userService = {
   getAllUsers: async () => {
     try {
-      const response = await axiosInstance.get("/admin/users");
+      // Thêm timestamp để tránh cache
+      const timestamp = new Date().getTime();
+      const response = await axiosInstance.get(`/admin/users?t=${timestamp}`);
       const data = parseResponse(response);
       return { data: Array.isArray(data) ? data : (data.data || []) };
     } catch (error) {
@@ -48,7 +50,7 @@ export const userService = {
     }
   },
 
-  updateUser: async (id: number, userData: { name: string; email: string; password?: string }) => {
+  updateUser: async (id: number, userData: { name: string; email: string; password?: string; role?: string }) => {
     try {
       const response = await axiosInstance.put(`/admin/users/${id}`, userData);
       return parseResponse(response);

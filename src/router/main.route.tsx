@@ -8,6 +8,8 @@ import CategoryList from "../pages/CategoryList";
 import BrandList from "../pages/BrandList";
 import AdminLogin from "../pages/AdminLogin";
 import AdminRegister from "../pages/AdminRegister";
+import ReturnRequestList from "../pages/ReturnRequestList";
+
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
 // Import từ modules
@@ -49,6 +51,7 @@ const routes = [
       { path: "products", element: <ProductList /> },
       { path: "products/create", element: <ProductCreate /> },
       { path: "products/edit/:id", element: <ProductEdit /> },
+
       { path: "categories", element: <CategoryList /> },
       { path: "brands", element: <BrandList /> },
       { path: "attributes", element: <AttributeList /> },
@@ -64,6 +67,9 @@ const routes = [
       
       // Quản lý giỏ hàng
       { path: "carts", element: <CartList /> },
+      
+      // Quản lý hoàn hàng
+      { path: "return-requests", element: <ReturnRequestList /> },
     ],
   },
   

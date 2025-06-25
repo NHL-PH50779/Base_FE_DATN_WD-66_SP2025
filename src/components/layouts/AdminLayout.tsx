@@ -14,6 +14,7 @@ import {
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { MenuProps } from 'antd';
 import { authService } from '../../services/auth.service';
+import NotificationBell from '../common/NotificationBell';
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -28,7 +29,7 @@ const AdminLayout = () => {
   const getOpenKeys = () => {
     if (selectedKey === 'dashboard') return ['dashboard'];
     if (['products', 'categories', 'brands', 'attributes'].includes(selectedKey)) return ['product-management'];
-    if (['orders', 'carts'].includes(selectedKey)) return ['order-management'];
+    if (['orders', 'carts', 'return-requests'].includes(selectedKey)) return ['order-management'];
     if (selectedKey === 'users') return ['user-management'];
     return [];
   };
@@ -107,6 +108,11 @@ const AdminLayout = () => {
           icon: <ShoppingCartOutlined />,
           label: <Link to="/admin/carts">Giỏ hàng</Link>,
         },
+        {
+          key: 'return-requests',
+          icon: <ShoppingCartOutlined />,
+          label: <Link to="/admin/return-requests">Hoàn hàng</Link>,
+        },
       ],
     },
     {
@@ -165,6 +171,9 @@ const AdminLayout = () => {
         }}>
           <h1 style={{ margin: 0, fontSize: 20 }}>Hệ thống quản trị</h1>
           
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <NotificationBell />
+            </div>
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <div style={{ 
               display: 'flex', 
