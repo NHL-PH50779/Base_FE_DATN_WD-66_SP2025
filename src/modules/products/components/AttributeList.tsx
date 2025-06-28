@@ -94,6 +94,12 @@ export default function AttributeList() {
       return;
     }
 
+    // Kiểm tra trùng lặp trong danh sách giá trị
+    if (checkDuplicateValues(validValues)) {
+      message.error("Có giá trị bị trùng lặp trong danh sách!");
+      return;
+    }
+
     try {
       if (editingAttribute) {
         // Update attribute
@@ -157,6 +163,12 @@ export default function AttributeList() {
     setAttributeValues(newValues);
   };
 
+  const checkDuplicateValues = (values: string[]) => {
+    const lowerCaseValues = values.map(v => v.toLowerCase().trim()).filter(v => v !== '');
+    const uniqueValues = [...new Set(lowerCaseValues)];
+    return lowerCaseValues.length !== uniqueValues.length;
+  };
+
   const handleAddValueToExisting = (attribute: Attribute) => {
     setSelectedAttributeForValue(attribute);
     newValueForm.resetFields();
@@ -165,6 +177,13 @@ export default function AttributeList() {
 
   const handleSubmitNewValue = async (values: { value: string }) => {
     if (!selectedAttributeForValue) return;
+    
+    // Kiểm tra trùng lặp
+    const existingValues = selectedAttributeForValue.values?.map(v => v.value.toLowerCase()) || [];
+    if (existingValues.includes(values.value.toLowerCase())) {
+      message.error(`Giá trị "${values.value}" đã tồn tại trong thuộc tính này!`);
+      return;
+    }
     
     try {
       await createAttributeValue({

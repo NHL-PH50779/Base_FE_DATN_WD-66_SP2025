@@ -1,0 +1,103 @@
+/* Custom Menu Styles */
+.custom-menu .ant-menu-item {
+  margin: 4px 12px !important;
+  border-radius: 12px !important;
+  height: 48px !important;
+  line-height: 48px !important;
+  transition: all 0.3s ease !important;
+  border: none !important;
+}
+
+.custom-menu .ant-menu-item:hover {
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.1) 100%) !important;
+  transform: translateX(8px) !important;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2) !important;
+}
+
+.custom-menu .ant-menu-item-selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
+  transform: translateX(8px) !important;
+}
+
+.custom-menu .ant-menu-item-selected::after {
+  display: none !important;
+}
+
+.custom-menu .ant-menu-submenu-title {
+  margin: 4px 12px !important;
+  border-radius: 12px !important;
+  height: 48px !important;
+  line-height: 48px !important;
+  transition: all 0.3s ease !important;
+}
+
+.custom-menu .ant-menu-submenu-title:hover {
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.1) 100%) !important;
+  transform: translateX(8px) !important;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2) !important;
+}
+
+.custom-menu .ant-menu-submenu-open > .ant-menu-submenu-title {
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.1) 100%) !important;
+  transform: translateX(8px) !important;
+}
+
+.custom-menu .ant-menu-sub {
+  background: rgba(0,0,0,0.2) !important;
+  border-radius: 12px !important;
+  margin: 8px 12px !important;
+  padding: 8px 0 !important;
+}
+
+.custom-menu .ant-menu-sub .ant-menu-item {
+  margin: 2px 8px !important;
+  padding-left: 24px !important;
+}
+
+/* Scrollbar Styles */
+.ant-layout-sider::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ant-layout-sider::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+}
+
+.ant-layout-sider::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
+}
+
+.ant-layout-sider::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+/* Header Animation */
+@keyframes headerGlow {
+  0% { box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+  50% { box-shadow: 0 4px 30px rgba(102, 126, 234, 0.15); }
+  100% { box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+}
+
+.ant-layout-header {
+  animation: headerGlow 4s ease-in-out infinite;
+}
+
+/* Content Animation */
+@keyframes contentFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+.ant-layout-content > div {
+  animation: contentFloat 6s ease-in-out infinite;
+}
+
+/* User Dropdown Hover Effect */
+.ant-layout-header .ant-dropdown-trigger:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6) !important;
+}

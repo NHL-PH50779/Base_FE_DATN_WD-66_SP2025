@@ -10,11 +10,13 @@ interface User {
   name: string;
   email: string;
   role: 'client' | 'admin' | 'super_admin';
+  is_active?: boolean; // Optional vì backend chưa có
   created_at: string;
 }
 
 export default function UserList() {
   const [users, setUsers] = useState<User[]>([]);
+  const [userStatusMap, setUserStatusMap] = useState<{[key: number]: boolean}>({});
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -33,13 +35,17 @@ export default function UserList() {
       console.log('Users API response:', response);
       console.log('Users data:', response.data);
       
-      // Debug: Kiểm tra user atun@gmail.com
-      const atunUser = response.data?.find((user: User) => user.email === 'atun@gmail.com');
-      if (atunUser) {
-        console.log('Found atun user:', atunUser);
-      }
+      // Lấy trạng thái đã lưu từ localStorage
+      const savedStatus = JSON.parse(localStorage.getItem('userStatusMap') || '{}');
       
-      setUsers(response.data || []);
+      // Xử lý dữ liệu và áp dụng trạng thái đã lưu
+      const usersWithStatus = (response.data || []).map((user: any) => ({
+        ...user,
+        is_active: savedStatus[user.id] !== undefined ? savedStatus[user.id] : true
+      }));
+      
+      setUsers(usersWithStatus);
+      setUserStatusMap(savedStatus);
       
       if (forceRefresh) {
         message.success('Dữ liệu đã được cập nhật!');
@@ -97,13 +103,33 @@ export default function UserList() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleToggleStatus = async (id: number, isActive: boolean) => {
+    const user = users.find(u => u.id === id);
+    if (!user) return;
+    
+    // Cập nhật UI
+    setUsers(prev => prev.map(u => 
+      u.id === id ? { ...u, is_active: isActive } : u
+    ));
+    
+    // Lưu trạng thái vào localStorage
+    const newStatusMap = { ...userStatusMap, [id]: isActive };
+    setUserStatusMap(newStatusMap);
+    localStorage.setItem('userStatusMap', JSON.stringify(newStatusMap));
+    
     try {
-      await userService.deleteUser(id);
-      message.success('Xóa người dùng thành công');
-      fetchUsers();
+      // Thử gọi API
+      await userService.updateUser(id, {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        is_active: isActive
+      });
+      
+      message.success(`${isActive ? 'Kích hoạt' : 'Khóa'} người dùng thành công`);
+      
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Có lỗi xảy ra');
+      message.warning(`${isActive ? 'Kích hoạt' : 'Khóa'} người dùng (chỉ hiển thị)`);
     }
   };
 
@@ -143,6 +169,16 @@ export default function UserList() {
       },
     },
     {
+      title: "Trạng thái",
+      dataIndex: "is_active",
+      key: "is_active",
+      render: (isActive: boolean | undefined) => (
+        <Tag color={(isActive !== false) ? 'green' : 'red'}>
+          {(isActive !== false) ? 'Kích hoạt' : 'Bị khóa'}
+        </Tag>
+      ),
+    },
+    {
       title: "Ngày tạo",
       dataIndex: "created_at",
       key: "created_at",
@@ -165,26 +201,21 @@ export default function UserList() {
               Xem
             </Button>
           )}
+
           <Button
-            type="default"
+            type={record.is_active ? "primary" : "default"}
+            danger={record.is_active}
             size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            Sửa
-          </Button>
-          <Button
-            type="primary"
-            danger
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
+            onClick={() => handleToggleStatus(record.id, !record.is_active)}
             disabled={
-              // Admin chỉ xóa được client, super_admin xóa được tất cả
-              currentUserRole === 'admin' ? record.role !== 'client' : false
+              // Logic phân quyền khóa/kích hoạt
+              record.role === 'client' ? false : // Admin và Super Admin đều có thể khóa client
+              record.role === 'admin' && currentUserRole === 'super_admin' ? false : // Chỉ Super Admin khóa được Admin
+              record.role === 'super_admin' ? true : // Không ai khóa được Super Admin
+              true // Các trường hợp khác disable
             }
           >
-            Xóa
+            {record.is_active ? 'Khóa' : 'Kích hoạt'}
           </Button>
         </Space>
       ),

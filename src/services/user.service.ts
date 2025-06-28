@@ -68,5 +68,17 @@ export const userService = {
       console.error("Error deleting user:", error);
       throw error;
     }
+  },
+
+  toggleUserStatus: async (id: number, isActive: boolean) => {
+    try {
+      const response = await axiosInstance.patch(`/admin/users/${id}/toggle-status`, {
+        is_active: isActive
+      });
+      return parseResponse(response);
+    } catch (error) {
+      console.error("Error toggling user status:", error);
+      throw error;
+    }
   }
 };

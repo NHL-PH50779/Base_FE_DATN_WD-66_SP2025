@@ -7,6 +7,8 @@ import {
   Select,
   Switch,
   message,
+  InputNumber,
+  Space
 } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -49,19 +51,39 @@ const LaptopForm = () => {
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
+      // Xử lý giá trị NULL cho giá và số lượng
+      const processedValues = {
+        ...values,
+        price: values.price || null,
+        stock: values.stock || null
+      };
+      
       if (isEdit) {
-        await updateLaptop(Number(id), values);
+        await updateLaptop(Number(id), processedValues);
         message.success("Cập nhật thành công!");
       } else {
-        await createLaptop(values);
+        await createLaptop(processedValues);
         message.success("Tạo sản phẩm thành công!");
+        // Reset form sau khi tạo thành công
+        form.resetFields();
+        form.setFieldsValue({ is_active: true });
       }
-      navigate("/admin/laptops");
-    } catch {
+      
+      if (isEdit) {
+        navigate("/admin/laptops");
+      }
+    } catch (error) {
+      console.error('Error:', error);
       message.error("Đã xảy ra lỗi");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    form.resetFields();
+    form.setFieldsValue({ is_active: true });
+    message.info('Đã reset form');
   };
 
   return (
@@ -104,14 +126,42 @@ const LaptopForm = () => {
           <Select options={categories.map((c) => ({ value: c.id, label: c.name }))} />
         </Form.Item>
 
+        <Form.Item label="Giá bán chung" name="price">
+          <InputNumber
+            style={{ width: '100%' }}
+            formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+            parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
+            placeholder="Nhập giá bán (có thể để trống)"
+            min={0}
+          />
+        </Form.Item>
+
+        <Form.Item label="Số lượng tồn kho" name="stock">
+          <InputNumber
+            style={{ width: '100%' }}
+            placeholder="Nhập số lượng (có thể để trống)"
+            min={0}
+          />
+        </Form.Item>
+
         <Form.Item label="Kích hoạt" name="is_active" valuePropName="checked">
           <Switch />
         </Form.Item>
 
         <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            {isEdit ? "Cập nhật" : "Tạo mới"}
-          </Button>
+          <Space>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              {isEdit ? "Cập nhật" : "Tạo mới"}
+            </Button>
+            {!isEdit && (
+              <Button onClick={handleReset}>
+                Reset Form
+              </Button>
+            )}
+            <Button onClick={() => navigate("/admin/laptops")}>
+              Quay lại
+            </Button>
+          </Space>
         </Form.Item>
       </Form>
     </Card>

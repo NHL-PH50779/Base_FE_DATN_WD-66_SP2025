@@ -2,6 +2,7 @@ import React from "react";
 import { Card, Col, Row, Statistic, List, Badge } from "antd";
 import { axiosInstance } from "../utils/axios.util";
 import { dashboardService } from '../services/dashboard.service';
+import CommentReviewStats from '../components/dashboard/CommentReviewStats';
 import {
   LaptopOutlined,
   ShoppingCartOutlined,
@@ -206,6 +207,13 @@ const Dashboard: React.FC = () => {
               ))}
             </Row>
           </Card>
+        </Col>
+      </Row>
+
+      {/* Thống kê bình luận và đánh giá */}
+      <Row gutter={16} style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <CommentReviewStats />
         </Col>
       </Row>
 

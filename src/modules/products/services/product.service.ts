@@ -70,6 +70,26 @@ export const deleteProduct = async (id: number) => {
   }
 };
 
+export const restoreProduct = async (id: number) => {
+  try {
+    const response = await productApi.restore(id);
+    return parseResponse(response);
+  } catch (error) {
+    console.error(`Error restoring product with id ${id}:`, error);
+    throw error;
+  }
+};
+
+export const forceDeleteProduct = async (id: number) => {
+  try {
+    const response = await productApi.forceDelete(id);
+    return parseResponse(response);
+  } catch (error) {
+    console.error(`Error force deleting product with id ${id}:`, error);
+    throw error;
+  }
+};
+
 export const searchProducts = async (keyword: string) => {
   try {
     const response = await productApi.search(keyword);

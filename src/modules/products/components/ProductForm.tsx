@@ -56,6 +56,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
     attribute_id: number;
     values: number[];
   }[]>([]);
+  const [commonPrice, setCommonPrice] = useState<number | null>(null);
+  const [commonStock, setCommonStock] = useState<number | null>(null);
 
   const fetchAttributes = async () => {
     try {
@@ -225,15 +227,34 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
         sku,
         name: variantName,
         Name: variantName, // Database field với chữ N hoa
-        price: 0,
-        stock: 0,
+        price: commonPrice || null,
+        stock: commonStock || null,
         is_active: true,
         attributes: combination
       };
     });
 
-    setVariants([...variants, ...newVariants]);
-    message.success(`Đã tạo ${newVariants.length} biến thể`);
+    // Hiển thị modal xác nhận
+    Modal.confirm({
+      title: 'Tùy chọn tạo biến thể',
+      content: 'Bạn muốn thêm vào danh sách hiện tại hay thay thế toàn bộ?',
+      okText: 'Thay thế toàn bộ',
+      cancelText: 'Thêm vào danh sách',
+      onOk: () => {
+        setVariants(newVariants);
+        message.success(`Đã thay thế bằng ${newVariants.length} biến thể mới`);
+        setSelectedAttributes([]);
+        setCommonPrice(null);
+        setCommonStock(null);
+      },
+      onCancel: () => {
+        setVariants([...variants, ...newVariants]);
+        message.success(`Đã thêm ${newVariants.length} biến thể mới`);
+        setSelectedAttributes([]);
+        setCommonPrice(null);
+        setCommonStock(null);
+      }
+    });
   };
 
   // Xử lý thêm thuộc tính mới
@@ -291,8 +312,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
       sku: defaultSku,
       name: '',
       Name: '', // Database field với chữ N hoa
-      price: 0,
-      stock: 0,
+      price: null,
+      stock: null,
       is_active: true
     }]);
   };
@@ -487,21 +508,49 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
               <p>Chưa có thuộc tính nào. Hãy vào trang <a href="/admin/attributes">Quản lý Thuộc tính</a> để thêm.</p>
             </div>
           ) : (
-            attributes.map(attribute => (
-              <div key={attribute.id} style={{ marginBottom: 16 }}>
-                <h4>{attribute.name} ({attribute.values?.length || 0} giá trị)</h4>
-                <Select
-                  mode="multiple"
-                  style={{ width: '100%' }}
-                  placeholder={`Chọn giá trị cho ${attribute.name}`}
-                  onChange={(values) => handleSelectAttribute(attribute.id!, values)}
-                >
-                  {attribute.values?.map(value => (
-                    <Option key={value.id} value={value.id!}>{value.value}</Option>
-                  ))}
-                </Select>
+            <>
+              {attributes.map(attribute => (
+                <div key={attribute.id} style={{ marginBottom: 16 }}>
+                  <h4>{attribute.name} ({attribute.values?.length || 0} giá trị)</h4>
+                  <Select
+                    mode="multiple"
+                    style={{ width: '100%' }}
+                    placeholder={`Chọn giá trị cho ${attribute.name}`}
+                    value={selectedAttributes.find(a => a.attribute_id === attribute.id!)?.values || []}
+                    onChange={(values) => handleSelectAttribute(attribute.id!, values)}
+                  >
+                    {attribute.values?.map(value => (
+                      <Option key={value.id} value={value.id!}>{value.value}</Option>
+                    ))}
+                  </Select>
+                </div>
+              ))}
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: 16, padding: '16px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Giá chung (tùy chọn):</label>
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    placeholder="Nhập giá chung cho tất cả biến thể"
+                    value={commonPrice}
+                    onChange={setCommonPrice}
+                    min={0}
+                    formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Số lượng chung (tùy chọn):</label>
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    placeholder="Nhập số lượng chung cho tất cả biến thể"
+                    value={commonStock}
+                    onChange={setCommonStock}
+                    min={0}
+                  />
+                </div>
               </div>
-            ))
+            </>
           )}
           
           {attributes.length > 0 && (

@@ -19,6 +19,7 @@ const { Title } = Typography;
 interface Category {
   id: number;
   name: string;
+  products_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -86,15 +87,22 @@ const CategoryList = () => {
 
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      render: (_: any, __: any, index: number) => index + 1,
     },
     {
       title: 'Tên danh mục',
       dataIndex: 'name',
       key: 'name',
+    },
+    {
+      title: 'Số lượng sản phẩm',
+      dataIndex: 'products_count',
+      key: 'products_count',
+      width: 150,
+      render: (count: number) => count || 0,
     },
     {
       title: 'Ngày tạo',

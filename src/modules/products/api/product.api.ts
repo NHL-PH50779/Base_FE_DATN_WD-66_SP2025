@@ -38,6 +38,15 @@ export const productApi = {
     return response;
   },
   
+  restore: async (id: number) => {
+    const response = await axiosInstance.put(`/products/restore/${id}`);
+    return response;
+  },
+  
+  forceDelete: async (id: number) => {
+    const response = await axiosInstance.delete(`/products/force-delete/${id}`);
+    return response;
+  },
 
   toggleActive: async (id: number) => {
     const response = await axiosInstance.put(`/products/toggle-active/${id}`);

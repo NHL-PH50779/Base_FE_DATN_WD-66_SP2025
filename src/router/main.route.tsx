@@ -3,12 +3,16 @@ import AdminLayout from "../components/layouts/AdminLayout";
 import Dashboard from "../pages/Dashboard";
 import UserList from "../pages/UserList";
 import OrderList from "../pages/OrderList";
-import CartList from "../pages/CartList";
+
 import CategoryList from "../pages/CategoryList";
 import BrandList from "../pages/BrandList";
 import AdminLogin from "../pages/AdminLogin";
 import AdminRegister from "../pages/AdminRegister";
 import ReturnRequestList from "../pages/ReturnRequestList";
+import CommentManagement from "../pages/CommentManagement";
+import ReviewManagement from "../pages/ReviewManagement";
+import VoucherList from "../pages/VoucherList";
+import ProductDetail from "../pages/ProductDetail";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
@@ -51,6 +55,7 @@ const routes = [
       { path: "products", element: <ProductList /> },
       { path: "products/create", element: <ProductCreate /> },
       { path: "products/edit/:id", element: <ProductEdit /> },
+      { path: "products/detail/:id", element: <ProductDetail /> },
 
       { path: "categories", element: <CategoryList /> },
       { path: "brands", element: <BrandList /> },
@@ -65,11 +70,17 @@ const routes = [
       // Quản lý đơn hàng
       { path: "orders", element: <OrderList /> },
       
-      // Quản lý giỏ hàng
-      { path: "carts", element: <CartList /> },
+
       
       // Quản lý hoàn hàng
       { path: "return-requests", element: <ReturnRequestList /> },
+      
+      // Quản lý bình luận và đánh giá
+      { path: "comments", element: <CommentManagement /> },
+      { path: "reviews", element: <ReviewManagement /> },
+      
+      // Quản lý voucher
+      { path: "vouchers", element: <VoucherList /> },
     ],
   },
   

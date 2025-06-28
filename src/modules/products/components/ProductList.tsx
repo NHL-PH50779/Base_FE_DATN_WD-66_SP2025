@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Table, Button, Space, Tag, Input, Modal, message, Card, Switch } from "antd";
-import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { Table, Button, Space, Tag, Input, Modal, message, Card, Switch, Tabs } from "antd";
+import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, EyeOutlined, UndoOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { getAllProducts, deleteProduct, toggleActiveProduct, searchProducts } from "../services/product.service";
+import { getAllProducts, deleteProduct, toggleActiveProduct, searchProducts, restoreProduct, forceDeleteProduct } from "../services/product.service";
 import { getAllBrands } from "../services/brand.service";
 import { getAllCategories } from "../services/category.service";
 import type { Product } from "../types/product.type";
@@ -10,7 +10,9 @@ import type { Product } from "../types/product.type";
 export default function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]); // Lưu tất cả sản phẩm
+  const [trashedProducts, setTrashedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('active');
 
   const [searchKeyword, setSearchKeyword] = useState("");
   const [brands, setBrands] = useState<any[]>([]);
@@ -24,9 +26,15 @@ export default function ProductList() {
       const productsResponse = await getAllProducts();
       
       console.log("Products response:", productsResponse);
-      const productData = productsResponse.data || [];
-      setProducts(productData);
-      setAllProducts(productData); // Lưu dữ liệu gốc
+      const allProductData = (productsResponse.data || []).sort((a: Product, b: Product) => (b.id || 0) - (a.id || 0));
+      
+      // Phân tách sản phẩm active và đã xóa
+      const activeProducts = allProductData.filter((p: Product) => !p.deleted_at);
+      const deletedProducts = allProductData.filter((p: Product) => p.deleted_at);
+      
+      setProducts(activeProducts);
+      setAllProducts(activeProducts);
+      setTrashedProducts(deletedProducts);
       
       // Call other APIs
       const [brandsResponse, categoriesResponse] = await Promise.all([
@@ -61,7 +69,7 @@ export default function ProductList() {
       return;
     }
     
-    // Tìm kiếm trong dữ liệu đã có
+    // Tìm kiếm trong dữ liệu đã có (chỉ trong sản phẩm active)
     const filtered = allProducts.filter(product => {
       const searchTerm = value.toLowerCase();
       const productName = product.name?.toLowerCase() || '';
@@ -82,21 +90,61 @@ export default function ProductList() {
     setProducts(allProducts);
   };
 
-  const handleDelete = (id: number) => {
+  const handleSoftDelete = (id: number) => {
     Modal.confirm({
       title: "Xác nhận xóa sản phẩm",
-      content: "Bạn có chắc chắn muốn xóa sản phẩm này?",
+      content: "Sản phẩm sẽ được chuyển vào thùng rác và có thể khôi phục sau này.",
       okText: "Xóa",
       okType: "danger",
       cancelText: "Hủy",
       onOk: async () => {
         try {
           await deleteProduct(id);
-          message.success("Xóa sản phẩm thành công");
+          message.success("Đã chuyển sản phẩm vào thùng rác");
           fetchAllData();
         } catch (error) {
-          console.error("Error deleting product:", error);
+          console.error("Error soft deleting product:", error);
           message.error("Lỗi khi xóa sản phẩm");
+        }
+      }
+    });
+  };
+
+  const handleRestore = (id: number) => {
+    Modal.confirm({
+      title: "Khôi phục sản phẩm",
+      content: "Bạn có chắc chắn muốn khôi phục sản phẩm này?",
+      okText: "Khôi phục",
+      okType: "primary",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          await restoreProduct(id);
+          message.success("Khôi phục sản phẩm thành công");
+          fetchAllData();
+        } catch (error) {
+          console.error("Error restoring product:", error);
+          message.error("Lỗi khi khôi phục sản phẩm");
+        }
+      }
+    });
+  };
+
+  const handleForceDelete = (id: number) => {
+    Modal.confirm({
+      title: "Xóa vĩnh viễn sản phẩm",
+      content: "Sản phẩm sẽ bị xóa vĩnh viễn và không thể khôi phục. Bạn có chắc chắn?",
+      okText: "Xóa vĩnh viễn",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          await forceDeleteProduct(id);
+          message.success("Xóa vĩnh viễn sản phẩm thành công");
+          fetchAllData();
+        } catch (error) {
+          console.error("Error force deleting product:", error);
+          message.error("Lỗi khi xóa vĩnh viễn sản phẩm");
         }
       }
     });
@@ -168,7 +216,6 @@ export default function ProductList() {
         <Switch 
           checked={isActive} 
           onChange={() => handleToggleActive(record.id!, isActive)}
-
         />
       ),
     },
@@ -178,6 +225,13 @@ export default function ProductList() {
       render: (_: any, record: Product) => (
         <Space>
           <Button 
+            icon={<EyeOutlined />} 
+            onClick={() => navigate(`/admin/products/detail/${record.id}`)}
+            type="default"
+          >
+            Chi tiết
+          </Button>
+          <Button 
             icon={<EditOutlined />} 
             onClick={() => navigate(`/admin/products/edit/${record.id}`)}
           >
@@ -185,14 +239,144 @@ export default function ProductList() {
           </Button>
           <Button 
             icon={<DeleteOutlined />} 
-            danger 
-            onClick={() => handleDelete(record.id!)}
+            danger
+            onClick={() => handleSoftDelete(record.id!)}
           >
             Xóa
           </Button>
         </Space>
       ),
     },
+  ];
+
+  // Columns cho sản phẩm đã xóa
+  const trashedColumns = [
+    {
+      title: "Hình ảnh",
+      dataIndex: "thumbnail",
+      key: "thumbnail",
+      render: (thumbnail: string) => (
+        thumbnail ? 
+        <img 
+          src={thumbnail.startsWith('http') ? thumbnail : `http://localhost/storage/products/${thumbnail}`} 
+          alt="Thumbnail" 
+          style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} 
+        /> : 
+        <div style={{ width: 50, height: 50, background: '#f0f0f0', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          No image
+        </div>
+      )
+    },
+    {
+      title: "Tên sản phẩm",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Thương hiệu",
+      dataIndex: "brand_id",
+      key: "brand_id",
+      render: (brandId: number) => getBrandName(brandId),
+    },
+    {
+      title: "Danh mục",
+      dataIndex: "category_id", 
+      key: "category_id",
+      render: (categoryId: number) => getCategoryName(categoryId),
+    },
+    {
+      title: "Ngày xóa",
+      dataIndex: "deleted_at",
+      key: "deleted_at",
+      render: (date: string) => new Date(date).toLocaleDateString('vi-VN'),
+    },
+    {
+      title: "Hành động",
+      key: "action",
+      render: (_: any, record: Product) => (
+        <Space>
+          <Button 
+            icon={<UndoOutlined />} 
+            type="primary"
+            onClick={() => handleRestore(record.id!)}
+          >
+            Khôi phục
+          </Button>
+          <Button 
+            icon={<DeleteOutlined />} 
+            danger
+            onClick={() => handleForceDelete(record.id!)}
+          >
+            Xóa vĩnh viễn
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
+  const tabItems = [
+    {
+      key: 'active',
+      label: `Sản phẩm hoạt động (${products.length})`,
+      children: (
+        <div>
+          <Space style={{ marginBottom: 16 }}>
+            <Input.Search
+              placeholder="Tìm kiếm theo tên sản phẩm, thương hiệu, danh mục..."
+              allowClear
+              value={searchKeyword}
+              onChange={(e) => handleSearch(e.target.value)}
+              onSearch={handleSearch}
+              onClear={handleSearchClear}
+              style={{ width: 400 }}
+              enterButton={
+                <Button type="primary" icon={<SearchOutlined />}>
+                  Tìm kiếm
+                </Button>
+              }
+            />
+            {searchKeyword && (
+              <span style={{ color: '#666', fontSize: '14px' }}>
+                Tìm thấy {products.length} sản phẩm
+              </span>
+            )}
+          </Space>
+          
+          <Table
+            columns={columns}
+            dataSource={products}
+            rowKey="id"
+            loading={loading}
+            pagination={{ 
+              pageSize: 10,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} sản phẩm`
+            }}
+            style={{ borderRadius: 12, overflow: "hidden" }}
+          />
+        </div>
+      )
+    },
+    {
+      key: 'trashed',
+      label: `Thùng rác (${trashedProducts.length})`,
+      children: (
+        <Table
+          columns={trashedColumns}
+          dataSource={trashedProducts}
+          rowKey="id"
+          loading={loading}
+          pagination={{ 
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} sản phẩm đã xóa`
+          }}
+          style={{ borderRadius: 12, overflow: "hidden" }}
+        />
+      )
+    }
   ];
 
   return (
@@ -212,7 +396,6 @@ export default function ProductList() {
       }}
       extra={
         <Space>
-
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -224,40 +407,10 @@ export default function ProductList() {
         </Space>
       }
     >
-      <Space style={{ marginBottom: 16 }}>
-        <Input.Search
-          placeholder="Tìm kiếm theo tên sản phẩm, thương hiệu, danh mục..."
-          allowClear
-          value={searchKeyword}
-          onChange={(e) => handleSearch(e.target.value)}
-          onSearch={handleSearch}
-          onClear={handleSearchClear}
-          style={{ width: 400 }}
-          enterButton={
-            <Button type="primary" icon={<SearchOutlined />}>
-              Tìm kiếm
-            </Button>
-          }
-        />
-        {searchKeyword && (
-          <span style={{ color: '#666', fontSize: '14px' }}>
-            Tìm thấy {products.length} sản phẩm
-          </span>
-        )}
-      </Space>
-      
-      <Table
-        columns={columns}
-        dataSource={products}
-        rowKey="id"
-        loading={loading}
-        pagination={{ 
-          pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} sản phẩm`
-        }}
-        style={{ borderRadius: 12, overflow: "hidden" }}
+      <Tabs 
+        activeKey={activeTab} 
+        onChange={setActiveTab} 
+        items={tabItems}
       />
     </Card>
   );
