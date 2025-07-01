@@ -18,7 +18,7 @@ const parseResponse = (response: any) => {
 export const dashboardService = {
   getStats: async () => {
     try {
-      const response = await axiosInstance.get("/dashboard/stats");
+      const response = await axiosInstance.get("/admin/dashboard/stats");
       const data = parseResponse(response);
       return { data: data.data || {} };
     } catch (error) {

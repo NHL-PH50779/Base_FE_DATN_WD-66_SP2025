@@ -112,3 +112,25 @@ export const toggleActiveProduct = async (id: number) => {
     throw error;
   }
 };
+
+export const getProductsByBrand = async (brandId: number) => {
+  try {
+    const response = await productApi.getByBrand(brandId);
+    const data = parseResponse(response);
+    return { data: Array.isArray(data) ? data : [] };
+  } catch (error) {
+    console.error(`Error fetching products by brand ${brandId}:`, error);
+    return { data: [] };
+  }
+};
+
+export const getProductsByCategory = async (categoryId: number) => {
+  try {
+    const response = await productApi.getByCategory(categoryId);
+    const data = parseResponse(response);
+    return { data: Array.isArray(data) ? data : [] };
+  } catch (error) {
+    console.error(`Error fetching products by category ${categoryId}:`, error);
+    return { data: [] };
+  }
+};

@@ -11,7 +11,8 @@ import {
   Card,
   Typography
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { brandService } from '../services/brand.service';
 
 const { Title } = Typography;
@@ -25,6 +26,7 @@ interface Brand {
 }
 
 const BrandList = () => {
+  const navigate = useNavigate();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -116,6 +118,13 @@ const BrandList = () => {
       width: 150,
       render: (_: any, record: Brand) => (
         <Space>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/admin/brands/${record.id}`)}
+          >
+            Chi tiết
+          </Button>
           <Button
             type="primary"
             size="small"

@@ -52,4 +52,14 @@ export const productApi = {
     const response = await axiosInstance.put(`/products/toggle-active/${id}`);
     return response;
   },
+
+  getByBrand: async (brandId: number) => {
+    const response = await axiosInstance.get(`/products-by-brand/${brandId}`);
+    return response;
+  },
+
+  getByCategory: async (categoryId: number) => {
+    const response = await axiosInstance.get(`/products-by-category/${categoryId}`);
+    return response;
+  },
 };

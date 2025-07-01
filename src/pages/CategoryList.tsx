@@ -11,7 +11,8 @@ import {
   Card,
   Typography
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { categoryService } from '../services/category.service';
 
 const { Title } = Typography;
@@ -25,6 +26,7 @@ interface Category {
 }
 
 const CategoryList = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -116,6 +118,13 @@ const CategoryList = () => {
       width: 150,
       render: (_: any, record: Category) => (
         <Space>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/admin/categories/${record.id}`)}
+          >
+            Chi tiết
+          </Button>
           <Button
             type="primary"
             size="small"

@@ -5,7 +5,9 @@ import UserList from "../pages/UserList";
 import OrderList from "../pages/OrderList";
 
 import CategoryList from "../pages/CategoryList";
+import CategoryDetail from "../pages/CategoryDetail";
 import BrandList from "../pages/BrandList";
+import BrandDetail from "../pages/BrandDetail";
 import AdminLogin from "../pages/AdminLogin";
 import AdminRegister from "../pages/AdminRegister";
 import ReturnRequestList from "../pages/ReturnRequestList";
@@ -59,7 +61,9 @@ const routes = [
       { path: "products/detail/:id", element: <ProductDetail /> },
 
       { path: "categories", element: <CategoryList /> },
+      { path: "categories/:id", element: <CategoryDetail /> },
       { path: "brands", element: <BrandList /> },
+      { path: "brands/:id", element: <BrandDetail /> },
       { path: "attributes", element: <AttributeList /> },
       
 

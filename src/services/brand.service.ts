@@ -40,7 +40,7 @@ export const brandService = {
 
   createBrand: async (brandData: { name: string }) => {
     try {
-      const response = await axiosInstance.post("/brands", brandData);
+      const response = await axiosInstance.post("/admin/brands", brandData);
       return parseResponse(response);
     } catch (error) {
       console.error("Error creating brand:", error);
@@ -50,7 +50,7 @@ export const brandService = {
 
   updateBrand: async (id: number, brandData: { name: string }) => {
     try {
-      const response = await axiosInstance.put(`/brands/${id}`, brandData);
+      const response = await axiosInstance.put(`/admin/brands/${id}`, brandData);
       return parseResponse(response);
     } catch (error) {
       console.error("Error updating brand:", error);
@@ -60,7 +60,7 @@ export const brandService = {
 
   deleteBrand: async (id: number) => {
     try {
-      const response = await axiosInstance.delete(`/brands/${id}`);
+      const response = await axiosInstance.delete(`/admin/brands/${id}`);
       return parseResponse(response);
     } catch (error) {
       console.error("Error deleting brand:", error);

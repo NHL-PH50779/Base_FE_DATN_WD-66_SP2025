@@ -40,7 +40,7 @@ export const categoryService = {
 
   createCategory: async (categoryData: { name: string }) => {
     try {
-      const response = await axiosInstance.post("/categories", categoryData);
+      const response = await axiosInstance.post("/admin/categories", categoryData);
       return parseResponse(response);
     } catch (error) {
       console.error("Error creating category:", error);
@@ -50,7 +50,7 @@ export const categoryService = {
 
   updateCategory: async (id: number, categoryData: { name: string }) => {
     try {
-      const response = await axiosInstance.put(`/categories/${id}`, categoryData);
+      const response = await axiosInstance.put(`/admin/categories/${id}`, categoryData);
       return parseResponse(response);
     } catch (error) {
       console.error("Error updating category:", error);
@@ -60,7 +60,7 @@ export const categoryService = {
 
   deleteCategory: async (id: number) => {
     try {
-      const response = await axiosInstance.delete(`/categories/${id}`);
+      const response = await axiosInstance.delete(`/admin/categories/${id}`);
       return parseResponse(response);
     } catch (error) {
       console.error("Error deleting category:", error);
