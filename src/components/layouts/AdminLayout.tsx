@@ -14,6 +14,7 @@ import {
   CommentOutlined,
   StarOutlined,
   GiftOutlined,
+  FireOutlined,
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -146,6 +147,11 @@ const AdminLayout = () => {
           key: 'vouchers',
           icon: <GiftOutlined />,
           label: <Link to="/admin/vouchers">Voucher</Link>,
+        },
+        {
+          key: 'flash-sales',
+          icon: <FireOutlined />,
+          label: <Link to="/admin/flash-sales">Flash Sale</Link>,
         },
       ],
     },

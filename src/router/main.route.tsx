@@ -13,6 +13,7 @@ import CommentManagement from "../pages/CommentManagement";
 import ReviewManagement from "../pages/ReviewManagement";
 import VoucherList from "../pages/VoucherList";
 import ProductDetail from "../pages/ProductDetail";
+import FlashSaleManagement from "../pages/FlashSaleManagement";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
@@ -81,6 +82,9 @@ const routes = [
       
       // Quản lý voucher
       { path: "vouchers", element: <VoucherList /> },
+      
+      // Quản lý Flash Sale
+      { path: "flash-sales", element: <FlashSaleManagement /> },
     ],
   },
   

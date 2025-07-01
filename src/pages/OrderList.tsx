@@ -171,7 +171,9 @@ const OrderList = () => {
   const handleStatusChange = async (orderId: number, newStatusId: number) => {
     setUpdating(orderId);
     try {
-      await orderService.updateOrderStatus(orderId, newStatusId, 1);
+      console.log('Changing status for order:', orderId, 'to:', newStatusId);
+      const result = await orderService.updateOrderStatus(orderId, newStatusId, 1);
+      console.log('Status change result:', result);
       
       // Tự động cập nhật trạng thái thanh toán
       if (newStatusId === 8) { // Đồng ý hoàn hàng -> Đã hoàn tiền
@@ -181,10 +183,13 @@ const OrderList = () => {
         message.success('Cập nhật trạng thái thành công!');
       }
       
-      await fetchOrders(false); // Không hiển loading khi cập nhật trạng thái
+      // Force refresh data
+      setTimeout(() => {
+        fetchOrders(false);
+      }, 500);
     } catch (error) {
       console.error('Error updating status:', error);
-      message.error('Lỗi khi cập nhật trạng thái!');
+      message.error('Lỗi khi cập nhật trạng thái: ' + (error as any)?.message);
     } finally {
       setUpdating(null);
     }
@@ -227,8 +232,8 @@ const OrderList = () => {
     switch (currentStatus) {
       case 1: // Chờ xác nhận -> Admin có thể: Xác nhận hoặc Hủy
         return allStatuses.filter(([key]) => ['1', '2', '6'].includes(key));
-      case 2: // Đã xác nhận -> Admin có thể: Vận chuyển hoặc Hủy
-        return allStatuses.filter(([key]) => ['2', '3', '6'].includes(key));
+      case 2: // Đã xác nhận -> Admin chỉ có thể: Vận chuyển (không thể hủy nữa)
+        return allStatuses.filter(([key]) => ['2', '3'].includes(key));
       case 3: // Đang vận chuyển -> Admin có thể: Đã giao
         return allStatuses.filter(([key]) => ['3', '4'].includes(key));
       case 4: // Đã giao hàng -> Admin có thể chuyển thành Hoàn thành hoặc chờ client xác nhận
@@ -416,17 +421,37 @@ const OrderList = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <Title level={2}>Quản lý đơn hàng</Title>
-        <Badge count={notifications.length} showZero={false}>
+        <Space>
           <Button 
-            type="primary" 
-            onClick={() => {
-              fetchOrders(true);
-              message.success('Cập nhật danh sách đơn hàng thành công!');
+            type="default"
+            onClick={async () => {
+              try {
+                setLoading(true);
+                const result = await orderService.autoCompleteOrders();
+                message.success(`Đã tự động hoàn thành ${result.completed_orders || 0} đơn hàng`);
+                await fetchOrders(false);
+              } catch (error) {
+                message.error('Lỗi khi tự động hoàn thành đơn hàng!');
+              } finally {
+                setLoading(false);
+              }
             }}
+            loading={loading}
           >
-            Làm mới
+            Tự động hoàn thành
           </Button>
-        </Badge>
+          <Badge count={notifications.length} showZero={false}>
+            <Button 
+              type="primary" 
+              onClick={() => {
+                fetchOrders(true);
+                message.success('Cập nhật danh sách đơn hàng thành công!');
+              }}
+            >
+              Làm mới
+            </Button>
+          </Badge>
+        </Space>
       </div>
 
       <Table
