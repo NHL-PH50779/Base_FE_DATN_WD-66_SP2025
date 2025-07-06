@@ -13,30 +13,17 @@ export const categoryApi = {
   },
   
   create: async (data: Partial<Category>) => {
-    // Cần auth token và admin role
-    const response = await axiosInstance.post("/categories", data, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.post("/admin/categories", data);
     return response;
   },
   
   update: async (id: number, data: Partial<Category>) => {
-    const response = await axiosInstance.put(`/categories/${id}`, data, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.put(`/admin/categories/${id}`, data);
     return response;
   },
   
   delete: async (id: number) => {
-    const response = await axiosInstance.delete(`/categories/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.delete(`/admin/categories/${id}`);
     return response;
   },
 };

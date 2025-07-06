@@ -14,17 +14,17 @@ export const attributeApi = {
   },
   
   createAttribute: async (data: Partial<Attribute>) => {
-    const response = await axiosInstance.post("/attributes", data);
+    const response = await axiosInstance.post("/admin/attributes", data);
     return response;
   },
   
   updateAttribute: async (id: number, data: Partial<Attribute>) => {
-    const response = await axiosInstance.put(`/attributes/${id}`, data);
+    const response = await axiosInstance.put(`/admin/attributes/${id}`, data);
     return response;
   },
   
   deleteAttribute: async (id: number) => {
-    const response = await axiosInstance.delete(`/attributes/${id}`);
+    const response = await axiosInstance.delete(`/admin/attributes/${id}`);
     return response;
   },
   
@@ -40,17 +40,17 @@ export const attributeApi = {
   },
   
   createAttributeValue: async (data: Partial<AttributeValue>) => {
-    const response = await axiosInstance.post("/attribute-values", data);
+    const response = await axiosInstance.post("/admin/attribute-values", data);
     return response;
   },
   
   updateAttributeValue: async (id: number, data: Partial<AttributeValue>) => {
-    const response = await axiosInstance.put(`/attribute-values/${id}`, data);
+    const response = await axiosInstance.put(`/admin/attribute-values/${id}`, data);
     return response;
   },
   
   deleteAttributeValue: async (id: number) => {
-    const response = await axiosInstance.delete(`/attribute-values/${id}`);
+    const response = await axiosInstance.delete(`/admin/attribute-values/${id}`);
     return response;
   },
 };

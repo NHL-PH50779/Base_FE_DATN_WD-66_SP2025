@@ -21,7 +21,7 @@ export const productApi = {
     const config = data instanceof FormData ? {
       headers: { 'Content-Type': 'multipart/form-data' }
     } : {};
-    const response = await axiosInstance.post("/products", data, config);
+    const response = await axiosInstance.post("/admin/products", data, config);
     return response;
   },
   
@@ -29,27 +29,27 @@ export const productApi = {
     const config = data instanceof FormData ? {
       headers: { 'Content-Type': 'multipart/form-data' }
     } : {};
-    const response = await axiosInstance.put(`/products/${id}`, data, config);
+    const response = await axiosInstance.put(`/admin/products/${id}`, data, config);
     return response;
   },
   
   delete: async (id: number) => {
-    const response = await axiosInstance.delete(`/products/${id}`);
+    const response = await axiosInstance.delete(`/admin/products/${id}`);
     return response;
   },
   
   restore: async (id: number) => {
-    const response = await axiosInstance.put(`/products/restore/${id}`);
+    const response = await axiosInstance.put(`/admin/products/restore/${id}`);
     return response;
   },
   
   forceDelete: async (id: number) => {
-    const response = await axiosInstance.delete(`/products/force-delete/${id}`);
+    const response = await axiosInstance.delete(`/admin/products/force-delete/${id}`);
     return response;
   },
 
   toggleActive: async (id: number) => {
-    const response = await axiosInstance.put(`/products/toggle-active/${id}`);
+    const response = await axiosInstance.put(`/admin/products/toggle-active/${id}`);
     return response;
   },
 

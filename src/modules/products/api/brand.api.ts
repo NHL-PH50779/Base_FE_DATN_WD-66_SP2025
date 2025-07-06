@@ -13,30 +13,17 @@ export const brandApi = {
   },
   
   create: async (data: Partial<Brand>) => {
-    // Cần auth token và admin role
-    const response = await axiosInstance.post("/brands", data, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.post("/admin/brands", data);
     return response;
   },
   
   update: async (id: number, data: Partial<Brand>) => {
-    const response = await axiosInstance.put(`/brands/${id}`, data, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.put(`/admin/brands/${id}`, data);
     return response;
   },
   
   delete: async (id: number) => {
-    const response = await axiosInstance.delete(`/brands/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await axiosInstance.delete(`/admin/brands/${id}`);
     return response;
   },
 };
