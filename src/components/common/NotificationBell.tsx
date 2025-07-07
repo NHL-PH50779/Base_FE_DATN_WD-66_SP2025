@@ -23,7 +23,7 @@ const NotificationBell: React.FC = () => {
   const fetchNotifications = async () => {
     try {
       const response = await axiosInstance.get('/admin/notifications');
-      setNotifications(response.data.notifications || []);
+      setNotifications(response.data.data || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }

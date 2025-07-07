@@ -13,7 +13,7 @@ const API_URL = "http://localhost:8000/api"; // Đổi từ 127.0.0.1 sang local
 
 export const axiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 5000, // Giảm timeout xuống 5 giây
+  timeout: 15000, // Tăng timeout lên 15 giây
   headers: {
     "Content-Type": "application/json",
     "Accept": "application/json",
