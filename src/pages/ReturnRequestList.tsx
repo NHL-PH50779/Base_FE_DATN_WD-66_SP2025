@@ -30,23 +30,55 @@ const ReturnRequestList: React.FC = () => {
   const fetchReturnRequests = async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.get('/admin/return-requests');
-      setReturnRequests(response.data || []);
+      // Lấy cả yêu cầu hoàn hàng và yêu cầu hủy VNPay
+      const [returnResponse, cancelResponse] = await Promise.all([
+        axiosInstance.get('/admin/return-requests'),
+        axiosInstance.get('/admin/cancel-requests')
+      ]);
+      
+      const returnRequests = returnResponse.data || [];
+      const cancelRequests = (cancelResponse.data.data || []).map((order: any) => ({
+        id: `cancel_${order.id}`,
+        user_id: order.user_id,
+        order_id: order.id,
+        reason: 'Yêu cầu hủy đơn VNPay',
+        status: 'pending',
+        created_at: order.updated_at,
+        user: order.user,
+        order: { total: parseFloat(order.total) },
+        type: 'cancel_vnpay',
+        original_order: order
+      }));
+      
+      setReturnRequests([...returnRequests, ...cancelRequests]);
     } catch (error) {
-      console.error('Error fetching return requests:', error);
-      message.error('Không thể tải danh sách yêu cầu hoàn hàng');
+      console.error('Error fetching requests:', error);
+      message.error('Không thể tải danh sách yêu cầu');
     } finally {
       setLoading(false);
     }
   };
 
-  const updateReturnRequestStatus = async (id: number, status: 'approved' | 'rejected') => {
+  const updateReturnRequestStatus = async (id: string | number, status: 'approved' | 'rejected') => {
     try {
-      await axiosInstance.put(`/admin/return-requests/${id}`, { status });
-      message.success(`Đã ${status === 'approved' ? 'chấp nhận' : 'từ chối'} yêu cầu hoàn hàng`);
+      if (String(id).startsWith('cancel_')) {
+        // Xử lý yêu cầu hủy VNPay
+        const orderId = String(id).replace('cancel_', '');
+        if (status === 'approved') {
+          await axiosInstance.post(`/admin/orders/${orderId}/approve-cancel`);
+          message.success('Đã duyệt hủy đơn và hoàn tiền vào ví');
+        } else {
+          await axiosInstance.post(`/admin/orders/${orderId}/reject-cancel`);
+          message.success('Đã từ chối yêu cầu hủy đơn');
+        }
+      } else {
+        // Xử lý yêu cầu hoàn hàng thông thường
+        await axiosInstance.put(`/admin/return-requests/${id}`, { status });
+        message.success(`Đã ${status === 'approved' ? 'chấp nhận' : 'từ chối'} yêu cầu hoàn hàng`);
+      }
       fetchReturnRequests();
     } catch (error) {
-      console.error('Error updating return request:', error);
+      console.error('Error updating request:', error);
       message.error('Có lỗi khi cập nhật trạng thái');
     }
   };
@@ -101,6 +133,15 @@ const ReturnRequestList: React.FC = () => {
             {record.user?.email || 'N/A'}
           </Text>
         </div>
+      ),
+    },
+    {
+      title: 'Loại yêu cầu',
+      key: 'type',
+      render: (record: any) => (
+        <Tag color={record.type === 'cancel_vnpay' ? 'blue' : 'orange'}>
+          {record.type === 'cancel_vnpay' ? 'Hủy VNPay' : 'Hoàn hàng'}
+        </Tag>
       ),
     },
     {
@@ -168,7 +209,7 @@ const ReturnRequestList: React.FC = () => {
     <Card
       title={
         <span style={{ color: '#1890ff', fontWeight: 700, fontSize: 22 }}>
-          Quản lý yêu cầu hoàn hàng
+          Quản lý yêu cầu hoàn hàng & Hủy đơn
         </span>
       }
       style={{
@@ -212,9 +253,24 @@ const ReturnRequestList: React.FC = () => {
               <Text>{selectedRequest.user?.name} ({selectedRequest.user?.email})</Text>
             </div>
             <div style={{ marginBottom: 16 }}>
-              <Text strong>Lý do hoàn hàng: </Text>
+              <Text strong>Loại yêu cầu: </Text>
+              <Tag color={(selectedRequest as any).type === 'cancel_vnpay' ? 'blue' : 'orange'}>
+                {(selectedRequest as any).type === 'cancel_vnpay' ? 'Hủy đơn VNPay' : 'Hoàn hàng'}
+              </Tag>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <Text strong>Lý do: </Text>
               <Text>{selectedRequest.reason}</Text>
             </div>
+            {(selectedRequest as any).type === 'cancel_vnpay' && (
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>Số tiền hoàn: </Text>
+                <Text style={{ color: '#52c41a', fontWeight: 'bold' }}>
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
+                    .format((selectedRequest as any).original_order?.total || 0)}
+                </Text>
+              </div>
+            )}
             <div style={{ marginBottom: 16 }}>
               <Text strong>Trạng thái: </Text>
               <Tag color={getStatusColor(selectedRequest.status)}>
