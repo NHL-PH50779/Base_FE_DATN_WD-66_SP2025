@@ -42,12 +42,33 @@ class OrderAutoCompleteService {
 export const autoCompleteService = new OrderAutoCompleteService();
 
 export const orderService = {
-  // Admin: Lấy tất cả đơn hàng
-  getAllOrders: async () => {
+  // Admin: Lấy tất cả đơn hàng với cache
+  getAllOrders: async (useCache = true) => {
+    const cacheKey = 'admin_orders_cache';
+    const cacheTime = 30000; // 30s cache
+    
+    if (useCache) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < cacheTime) {
+          return { data };
+        }
+      }
+    }
+    
     try {
       const response = await axiosInstance.get("/admin/orders");
       const data = parseResponse(response);
-      return { data: Array.isArray(data) ? data : (data.data || []) };
+      const orders = Array.isArray(data) ? data : (data.data || []);
+      
+      // Cache kết quả
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data: orders,
+        timestamp: Date.now()
+      }));
+      
+      return { data: orders };
     } catch (error) {
       console.error("Error fetching orders:", error);
       return { data: [] };
@@ -62,6 +83,10 @@ export const orderService = {
         order_status_id: orderStatusId
       });
       console.log('Update response:', response.data);
+      
+      // Clear cache sau khi update
+      localStorage.removeItem('admin_orders_cache');
+      
       return parseResponse(response);
     } catch (error) {
       console.error("Error updating order status:", error);

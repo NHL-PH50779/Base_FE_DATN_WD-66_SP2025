@@ -85,7 +85,7 @@ const FlashSaleManagement: React.FC = () => {
   const fetchFlashSales = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/flash-sales');
+      const response = await axios.get('/admin/flash-sales');
       setFlashSales(response.data.data || []);
     } catch (error) {
       message.error('Không thể tải danh sách Flash Sale');
@@ -127,10 +127,10 @@ const FlashSaleManagement: React.FC = () => {
       };
 
       if (editingFlashSale) {
-        await axios.put(`/flash-sales/${editingFlashSale.id}`, payload);
+        await axios.put(`/admin/flash-sales/${editingFlashSale.id}`, payload);
         message.success('Cập nhật Flash Sale thành công');
       } else {
-        await axios.post('/flash-sales', payload);
+        await axios.post('/admin/flash-sales', payload);
         message.success('Tạo Flash Sale thành công');
       }
 
@@ -162,7 +162,7 @@ const FlashSaleManagement: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await axios.delete(`/flash-sales/${id}`);
+      await axios.delete(`/admin/flash-sales/${id}`);
       message.success('Xóa Flash Sale thành công');
       fetchFlashSales();
     } catch (error) {

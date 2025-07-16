@@ -1,5 +1,6 @@
-import React from 'react';
-import { Layout, Menu, Avatar, Dropdown, message } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, Avatar, Dropdown, message, Switch, notification } from 'antd';
+import './AdminLayout.css';
 
 import {
   DashboardOutlined,
@@ -15,6 +16,10 @@ import {
   StarOutlined,
   GiftOutlined,
   FireOutlined,
+  BulbOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -29,6 +34,19 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const user = authService.getUser();
+  const [collapsed, setCollapsed] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('darkMode') === 'true';
+  });
+  
+  useEffect(() => {
+    localStorage.setItem('darkMode', darkMode.toString());
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [darkMode]);
   
   const selectedKey = location.pathname.split('/')[2] || 'dashboard';
   const getOpenKeys = () => {
@@ -52,11 +70,28 @@ const AdminLayout = () => {
     }
   };
 
+  const showNotification = () => {
+    notification.info({
+      message: 'Thông báo mới',
+      description: 'Có 3 đơn hàng mới cần xử lý',
+      placement: 'topRight',
+      duration: 4,
+    });
+  };
+
   const userMenuItems: MenuProps['items'] = [
     {
       key: 'profile',
       icon: <UserOutlined />,
-      label: 'Thông tin cá nhân',
+      label: 'Tài khoản',
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Cài đặt',
+    },
+    {
+      type: 'divider',
     },
     {
       key: 'logout',
@@ -164,18 +199,26 @@ const AdminLayout = () => {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+    <Layout style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' }}>
       <Sider 
-        width={280} 
+        width={280}
+        collapsed={collapsed}
+        collapsible
+        trigger={null}
+        breakpoint="lg"
+        onBreakpoint={(broken) => setCollapsed(broken)}
         style={{
-          background: 'linear-gradient(180deg, #1e3c72 0%, #2a5298 100%)',
-          boxShadow: '4px 0 20px rgba(0,0,0,0.1)'
+          background: darkMode 
+            ? 'linear-gradient(180deg, #1e293b 0%, #334155 100%)'
+            : 'linear-gradient(180deg, #1e293b 0%, #334155 100%)',
+          boxShadow: '4px 0 20px rgba(0,0,0,0.1)',
+          transition: 'all 0.3s ease'
         }}
       >
         <div
           style={{
             height: 80,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
             margin: '16px 16px 24px 16px',
             display: 'flex',
             alignItems: 'center',
@@ -233,26 +276,79 @@ const AdminLayout = () => {
       <Layout>
         <Header style={{ 
           padding: '0 32px', 
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          background: darkMode 
+            ? 'linear-gradient(135deg, #1e293b 0%, #334155 100%)'
+            : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           boxShadow: '0 2px 20px rgba(0,0,0,0.08)',
-          borderBottom: '1px solid rgba(0,0,0,0.06)'
+          borderBottom: '1px solid rgba(0,0,0,0.06)',
+          transition: 'all 0.3s ease'
         }}>
-          <h1 style={{ 
-            margin: 0, 
-            fontSize: 24, 
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            fontWeight: 700
-          }}>
-            🏢 Hệ thống Quản trị
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: 18,
+                cursor: 'pointer',
+                color: darkMode ? '#fff' : '#333',
+                padding: 8,
+                borderRadius: 6,
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </button>
+            <h1 style={{ 
+              margin: 0, 
+              fontSize: 24, 
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 700
+            }}>
+              🏢 Hệ thống Quản trị
+            </h1>
+          </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <NotificationBell />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BulbOutlined style={{ color: darkMode ? '#fff' : '#333' }} />
+              <Switch
+                checked={darkMode}
+                onChange={setDarkMode}
+                size="small"
+                checkedChildren="🌙"
+                unCheckedChildren="☀️"
+              />
+            </div>
+            <button
+              onClick={showNotification}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: 18,
+                cursor: 'pointer',
+                color: darkMode ? '#fff' : '#333',
+                padding: 8,
+                borderRadius: 6,
+                position: 'relative'
+              }}
+            >
+              <BellOutlined />
+              <span style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                width: 8,
+                height: 8,
+                background: '#ff4d4f',
+                borderRadius: '50%'
+              }} />
+            </button>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div style={{ 
                 display: 'flex', 
@@ -260,10 +356,10 @@ const AdminLayout = () => {
                 cursor: 'pointer',
                 padding: '8px 16px',
                 borderRadius: 12,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                 color: '#fff',
                 transition: 'all 0.3s ease',
-                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
+                boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)'
               }}>
                 <Avatar 
                   style={{ 
@@ -285,13 +381,17 @@ const AdminLayout = () => {
         }}>
           <div
             style={{
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+              background: darkMode 
+                ? 'linear-gradient(135deg, #1e293b 0%, #334155 100%)'
+                : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
               padding: 32,
               minHeight: 'calc(100vh - 200px)',
               borderRadius: 20,
               boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
               border: '1px solid rgba(255,255,255,0.2)',
-              backdropFilter: 'blur(20px)'
+              backdropFilter: 'blur(20px)',
+              transition: 'all 0.3s ease',
+              color: darkMode ? '#fff' : '#333'
             }}
           >
             <Outlet />

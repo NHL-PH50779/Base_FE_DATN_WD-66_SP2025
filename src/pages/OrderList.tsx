@@ -104,11 +104,11 @@ const OrderList = () => {
     fetchOrders();
     checkNotifications();
     
-    // Auto-refresh mỗi 5 giây để nhận cập nhật real-time
+    // Auto-refresh mỗi 30 giây thay vì 5 giây
     const interval = setInterval(() => {
-      fetchOrders(false);
+      fetchOrders(false, false); // Không dùng cache khi auto-refresh
       checkNotifications();
-    }, 5000);
+    }, 30000);
     
     return () => clearInterval(interval);
   }, []);
@@ -137,10 +137,10 @@ const OrderList = () => {
     setNotifications(unreadNotifications);
   };
 
-  const fetchOrders = async (showLoading = true) => {
+  const fetchOrders = async (showLoading = true, useCache = true) => {
     if (showLoading) setLoading(true);
     try {
-      const response = await orderService.getAllOrders();
+      const response = await orderService.getAllOrders(useCache);
       const newOrders = response.data;
       
       // Kiểm tra có đơn hàng nào chuyển thành "Hoàn thành" không
@@ -183,10 +183,19 @@ const OrderList = () => {
         message.success('Cập nhật trạng thái thành công!');
       }
       
-      // Force refresh data
+      // Optimistic update - cập nhật ngay trên UI
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, order_status_id: newStatusId }
+            : order
+        )
+      );
+      
+      // Refresh data sau 1s
       setTimeout(() => {
         fetchOrders(false);
-      }, 500);
+      }, 1000);
     } catch (error) {
       console.error('Error updating status:', error);
       message.error('Lỗi khi cập nhật trạng thái: ' + (error as any)?.message);
@@ -444,7 +453,7 @@ const OrderList = () => {
             <Button 
               type="primary" 
               onClick={() => {
-                fetchOrders(true);
+                fetchOrders(true, false); // Force refresh không dùng cache
                 message.success('Cập nhật danh sách đơn hàng thành công!');
               }}
             >
@@ -460,10 +469,11 @@ const OrderList = () => {
         loading={loading}
         rowKey="id"
         pagination={{
-          pageSize: 10,
+          pageSize: 20,
           showSizeChanger: true,
           showQuickJumper: true,
           showTotal: (total) => `Tổng cộng ${total} đơn hàng`,
+          pageSizeOptions: ['10', '20', '50', '100']
         }}
       />
 

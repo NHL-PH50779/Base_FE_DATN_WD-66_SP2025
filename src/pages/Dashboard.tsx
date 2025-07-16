@@ -37,6 +37,9 @@ const Dashboard: React.FC = () => {
 
   React.useEffect(() => {
     fetchStats();
+    // Auto refresh mỗi 10 giây
+    const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchStats = async () => {
@@ -54,6 +57,11 @@ const Dashboard: React.FC = () => {
         ordersByStatus: data.orders_by_status || [],
         thisMonth: data.this_month || { orders: 0, revenue: 0 }
       });
+      
+      // Cập nhật doanh thu theo tháng từ API
+      if (data.monthly_revenue) {
+        setRevenueData(data.monthly_revenue);
+      }
     } catch (error) {
       console.error('Error fetching stats:', error);
       setStats({
@@ -70,14 +78,20 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const revenueData = [
-    { month: "Jan", revenue: 20000000 },
-    { month: "Feb", revenue: 25000000 },
-    { month: "Mar", revenue: 30000000 },
-    { month: "Apr", revenue: 35000000 },
-    { month: "May", revenue: 20000000 },
-    { month: "Jun", revenue: 20000000 },
-  ];
+  const [revenueData, setRevenueData] = React.useState([
+    { month: "Jan", revenue: 0 },
+    { month: "Feb", revenue: 0 },
+    { month: "Mar", revenue: 0 },
+    { month: "Apr", revenue: 0 },
+    { month: "May", revenue: 0 },
+    { month: "Jun", revenue: 0 },
+    { month: "Jul", revenue: 0 },
+    { month: "Aug", revenue: 0 },
+    { month: "Sep", revenue: 0 },
+    { month: "Oct", revenue: 0 },
+    { month: "Nov", revenue: 0 },
+    { month: "Dec", revenue: 0 },
+  ]);
 
   const bestSellers = [
     { name: "Laptop Dell XPS 13", sold: 30 },
@@ -147,7 +161,7 @@ const Dashboard: React.FC = () => {
           <Card style={{ borderTop: "4px solid #f5222d" }}>
             <Statistic
               title="Doanh thu"
-              value={stats.revenue.toLocaleString("vi-VN") + " ₫"}
+              value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stats.revenue)}
               prefix={<DollarOutlined />}
               loading={loading}
             />
@@ -181,7 +195,7 @@ const Dashboard: React.FC = () => {
           <Card style={{ borderTop: "4px solid #eb2f96" }}>
             <Statistic
               title="Doanh thu tháng này"
-              value={stats.thisMonth.revenue.toLocaleString("vi-VN") + " ₫"}
+              value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stats.thisMonth.revenue)}
               prefix={<DollarOutlined />}
               loading={loading}
             />

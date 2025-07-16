@@ -4,7 +4,12 @@ import type { Laptop } from "../types/laptop.type";
 const API_URL = "http://localhost:8000/api";
 
 export const getAllLaptops = () => {
-  return axios.get(`${API_URL}/products`);
+  const token = localStorage.getItem('token');
+  return axios.get(`${API_URL}/products`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
 };
 
 export const getLaptopById = (id: number) => {
@@ -36,5 +41,11 @@ export const restoreLaptop = (id: number) => {
 };
 
 export const toggleActiveLaptop = (id: number) => {
-  return axios.put(`${API_URL}/products/toggle-active/${id}`);
+  const token = localStorage.getItem('token');
+  return axios.put(`${API_URL}/products/toggle-active/${id}`, {}, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
 };

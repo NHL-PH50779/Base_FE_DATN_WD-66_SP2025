@@ -45,10 +45,12 @@ const LaptopListPage = () => {
 
   const handleToggle = async (id: number) => {
     try {
-      await toggleActiveLaptop(id);
+      const response = await toggleActiveLaptop(id);
+      message.success(response.data.message || 'Đã cập nhật trạng thái');
       fetchLaptops();
-    } catch {
-      message.error("Lỗi khi đổi trạng thái");
+    } catch (error: any) {
+      console.error('Toggle error:', error);
+      message.error(error.response?.data?.message || "Lỗi khi đổi trạng thái");
     }
   };
 
@@ -76,10 +78,18 @@ const LaptopListPage = () => {
       title: "Trạng thái",
       dataIndex: "is_active",
       render: (val: boolean, record: Laptop) => (
-        <Switch
-          checked={val}
-          onChange={() => handleToggle(record.id!)}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Switch
+            checked={val}
+            onChange={() => handleToggle(record.id!)}
+            checkedChildren="Bật"
+            unCheckedChildren="Tắt"
+            loading={loading}
+          />
+          <Tag color={val ? 'green' : 'red'}>
+            {val ? 'Hoạt động' : 'Tạm dừng'}
+          </Tag>
+        </div>
       ),
     },
     {
