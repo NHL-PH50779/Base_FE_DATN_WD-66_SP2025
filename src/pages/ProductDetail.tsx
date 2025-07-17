@@ -133,11 +133,14 @@ const ProductDetail = () => {
       title: 'Tồn kho',
       dataIndex: 'stock',
       key: 'stock',
-      render: (stock: number) => (
-        <Tag color={stock > 0 ? 'green' : 'red'}>
-          {stock} sản phẩm
-        </Tag>
-      ),
+      render: (stock: number, record: any) => {
+        const actualStock = stock || record.quantity || 0;
+        return (
+          <Tag color={actualStock > 0 ? 'green' : 'red'}>
+            {actualStock} sản phẩm
+          </Tag>
+        );
+      },
     },
     {
       title: 'Trạng thái',
