@@ -26,29 +26,44 @@ const ReturnRequestList: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ReturnRequest | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [processingIds, setProcessingIds] = useState<Set<string | number>>(new Set());
 
   const fetchReturnRequests = async () => {
     setLoading(true);
     try {
-      // Lấy cả yêu cầu hoàn hàng và yêu cầu hủy VNPay
-      const [returnResponse, cancelResponse] = await Promise.all([
-        axiosInstance.get('/admin/return-requests'),
-        axiosInstance.get('/admin/cancel-requests')
+      const token = localStorage.getItem('token');
+      
+      // Lấy return requests và orders có cancel_request
+      const [returnResponse, ordersResponse] = await Promise.all([
+        axiosInstance.get('/admin/return-requests', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        axiosInstance.get('/admin/orders', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
       ]);
       
-      const returnRequests = returnResponse.data || [];
-      const cancelRequests = (cancelResponse.data.data || []).map((order: any) => ({
-        id: `cancel_${order.id}`,
-        user_id: order.user_id,
-        order_id: order.id,
-        reason: 'Yêu cầu hủy đơn VNPay',
-        status: 'pending',
-        created_at: order.updated_at,
-        user: order.user,
-        order: { total: parseFloat(order.total) },
-        type: 'cancel_vnpay',
-        original_order: order
-      }));
+      const returnRequests = returnResponse.data.data || returnResponse.data || [];
+      
+      // Lọc orders có cancel_request
+      const orders = ordersResponse.data.data || ordersResponse.data || [];
+      console.log('All orders:', orders);
+      console.log('Orders with cancel_request:', orders.filter((order: any) => order.cancel_request));
+      
+      const cancelRequests = orders
+        .filter((order: any) => (order.cancel_request || order.cancel_reason) && order.order_status_id !== 6)
+        .map((order: any) => ({
+          id: `cancel_${order.id}`,
+          user_id: order.user_id,
+          order_id: order.id,
+          reason: order.cancel_request || order.cancel_reason || order.note || 'Yêu cầu hủy đơn',
+          status: 'pending',
+          created_at: order.updated_at,
+          user: order.user,
+          order: { total: parseFloat(order.total || 0) },
+          type: 'cancel',
+          original_order: order
+        }));
       
       setReturnRequests([...returnRequests, ...cancelRequests]);
     } catch (error) {
@@ -60,26 +75,105 @@ const ReturnRequestList: React.FC = () => {
   };
 
   const updateReturnRequestStatus = async (id: string | number, status: 'approved' | 'rejected') => {
+    console.log('Updating return request:', { id, status });
+    
+    // Thêm vào danh sách đang xử lý
+    setProcessingIds(prev => new Set([...prev, id]));
+    
     try {
+      const token = localStorage.getItem('token');
+      
       if (String(id).startsWith('cancel_')) {
-        // Xử lý yêu cầu hủy VNPay
+        // Xử lý yêu cầu hủy đơn
         const orderId = String(id).replace('cancel_', '');
         if (status === 'approved') {
-          await axiosInstance.post(`/admin/orders/${orderId}/approve-cancel`);
-          message.success('Đã duyệt hủy đơn và hoàn tiền vào ví');
+          await axiosInstance.put(`/admin/orders/${orderId}/order-status`, {
+            order_status_id: 6 // Trạng thái đã hủy
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          // Gửi thông báo cho client
+          const clientNotifications = JSON.parse(localStorage.getItem('client_notifications') || '[]');
+          clientNotifications.push({
+            id: Date.now(),
+            type: 'order_cancelled',
+            message: `Đơn hàng #${orderId} đã được hủy bởi quản trị viên`,
+            order_id: orderId,
+            created_at: new Date().toISOString(),
+            read: false
+          });
+          localStorage.setItem('client_notifications', JSON.stringify(clientNotifications));
+          
+          message.success('Đã chấp nhận hủy đơn hàng và thông báo cho khách hàng');
+          
+          // Cập nhật trạng thái trong danh sách
+          setReturnRequests(prev => 
+            prev.map(req => 
+              req.id === id ? { ...req, status: 'approved' as const } : req
+            )
+          );
         } else {
-          await axiosInstance.post(`/admin/orders/${orderId}/reject-cancel`);
+          // Từ chối hủy
           message.success('Đã từ chối yêu cầu hủy đơn');
+          
+          // Cập nhật trạng thái trong danh sách
+          setReturnRequests(prev => 
+            prev.map(req => 
+              req.id === id ? { ...req, status: 'rejected' as const } : req
+            )
+          );
         }
       } else {
-        // Xử lý yêu cầu hoàn hàng thông thường
-        await axiosInstance.put(`/admin/return-requests/${id}`, { status });
-        message.success(`Đã ${status === 'approved' ? 'chấp nhận' : 'từ chối'} yêu cầu hoàn hàng`);
+        // Xử lý yêu cầu hoàn hàng thông thường - gọi API processRefund
+        const request = returnRequests.find(req => req.id === id);
+        if (request) {
+          const response = await axiosInstance.post(`/admin/orders/${request.order_id}/process-refund`, {
+            approve: status === 'approved',
+            admin_note: status === 'approved' ? 'Chấp nhận hoàn hàng và hoàn tiền' : 'Từ chối hoàn hàng'
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          console.log('Process refund response:', response.data);
+          
+          message.success(`Đã ${status === 'approved' ? 'chấp nhận hoàn hàng và hoàn tiền vào ví' : 'từ chối hoàn hàng'}`);
+          
+          // Cập nhật trạng thái trong danh sách ngay lập tức
+          setReturnRequests(prev => 
+            prev.map(req => {
+              if (req.id === id) {
+                return { 
+                  ...req, 
+                  status: status as 'approved' | 'rejected'
+                };
+              }
+              return req;
+            })
+          );
+        }
       }
-      fetchReturnRequests();
-    } catch (error) {
+      
+      // Force refresh sau 500ms để đảm bảo đồng bộ với backend
+      setTimeout(() => {
+        fetchReturnRequests();
+      }, 500);
+      
+    } catch (error: any) {
       console.error('Error updating request:', error);
-      message.error('Có lỗi khi cập nhật trạng thái');
+      if (error.response?.status === 400) {
+        message.warning(error.response?.data?.message || 'Yêu cầu đã được xử lý trước đó');
+        fetchReturnRequests();
+      } else {
+        message.error('Có lỗi khi cập nhật trạng thái');
+      }
+    } finally {
+      // Loại bỏ khỏi danh sách đang xử lý
+      setProcessingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 
@@ -116,6 +210,12 @@ const ReturnRequestList: React.FC = () => {
       dataIndex: 'id',
       key: 'id',
       width: 60,
+      render: (id: string | number) => {
+        if (String(id).startsWith('cancel_')) {
+          return `C${String(id).replace('cancel_', '')}`;
+        }
+        return id;
+      },
     },
     {
       title: 'Đơn hàng',
@@ -139,8 +239,8 @@ const ReturnRequestList: React.FC = () => {
       title: 'Loại yêu cầu',
       key: 'type',
       render: (record: any) => (
-        <Tag color={record.type === 'cancel_vnpay' ? 'blue' : 'orange'}>
-          {record.type === 'cancel_vnpay' ? 'Hủy VNPay' : 'Hoàn hàng'}
+        <Tag color={record.type === 'cancel' ? 'blue' : 'orange'}>
+          {record.type === 'cancel' ? 'Hủy đơn' : 'Hoàn hàng'}
         </Tag>
       ),
     },
@@ -186,7 +286,29 @@ const ReturnRequestList: React.FC = () => {
                 size="small"
                 icon={<CheckOutlined />}
                 style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-                onClick={() => updateReturnRequestStatus(record.id, 'approved')}
+                loading={processingIds.has(record.id)}
+                disabled={processingIds.has(record.id)}
+                onClick={() => {
+                  if (String(record.id).startsWith('cancel_')) {
+                    Modal.confirm({
+                      title: 'Xác nhận hủy đơn hàng',
+                      content: (
+                        <div>
+                          <p>Bạn có chắc chắn muốn chấp nhận hủy đơn hàng #{record.order_id}?</p>
+                          <p style={{ color: '#ff4d4f', fontSize: '12px' }}>
+                            ⚠️ Lưu ý: Đơn hàng sẽ chuyển thành trạng thái "Đã hủy" và không thể hoàn tác.
+                          </p>
+                        </div>
+                      ),
+                      onOk: () => updateReturnRequestStatus(record.id, 'approved'),
+                      okText: 'Xác nhận hủy',
+                      cancelText: 'Hủy bỏ',
+                      okType: 'danger'
+                    });
+                  } else {
+                    updateReturnRequestStatus(record.id, 'approved');
+                  }
+                }}
               >
                 Chấp nhận
               </Button>
@@ -194,6 +316,8 @@ const ReturnRequestList: React.FC = () => {
                 danger
                 size="small"
                 icon={<CloseOutlined />}
+                loading={processingIds.has(record.id)}
+                disabled={processingIds.has(record.id)}
                 onClick={() => updateReturnRequestStatus(record.id, 'rejected')}
               >
                 Từ chối
@@ -290,11 +414,32 @@ const ReturnRequestList: React.FC = () => {
                     icon={<CheckOutlined />}
                     style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                     onClick={() => {
-                      updateReturnRequestStatus(selectedRequest.id, 'approved');
-                      setDetailModalVisible(false);
+                      if (String(selectedRequest.id).startsWith('cancel_')) {
+                        Modal.confirm({
+                          title: 'Xác nhận hủy đơn hàng',
+                          content: (
+                            <div>
+                              <p>Bạn có chắc chắn muốn chấp nhận hủy đơn hàng #{selectedRequest.order_id}?</p>
+                              <p style={{ color: '#ff4d4f', fontSize: '12px' }}>
+                                ⚠️ Đơn hàng sẽ chuyển thành trạng thái "Đã hủy" và không thể hoàn tác.
+                              </p>
+                            </div>
+                          ),
+                          onOk: () => {
+                            updateReturnRequestStatus(selectedRequest.id, 'approved');
+                            setDetailModalVisible(false);
+                          },
+                          okText: 'Xác nhận hủy',
+                          cancelText: 'Hủy bỏ',
+                          okType: 'danger'
+                        });
+                      } else {
+                        updateReturnRequestStatus(selectedRequest.id, 'approved');
+                        setDetailModalVisible(false);
+                      }
                     }}
                   >
-                    Chấp nhận hoàn hàng
+                    {String(selectedRequest.id).startsWith('cancel_') ? 'Chấp nhận hủy đơn' : 'Chấp nhận hoàn hàng'}
                   </Button>
                   <Button
                     danger

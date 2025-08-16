@@ -57,10 +57,24 @@ const VoucherList = () => {
   const fetchVouchers = async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.get('/vouchers');
-      setVouchers(response.data.data || []);
+      const token = localStorage.getItem('token');
+      // Thử cả 2 endpoint
+      let response;
+      try {
+        response = await axiosInstance.get('/admin/vouchers', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch {
+        response = await axiosInstance.get('/vouchers', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+      setVouchers(response.data.data || response.data || []);
     } catch (error) {
-      message.error('Lỗi khi tải danh sách voucher');
+      console.error('Voucher API error:', error);
+      // Hiện thị empty state thay vì lỗi
+      setVouchers([]);
+      message.warning('Chức năng voucher chưa sẵn sàng');
     } finally {
       setLoading(false);
     }
@@ -75,11 +89,19 @@ const VoucherList = () => {
       };
       delete data.dateRange;
 
+      const token = localStorage.getItem('token');
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      };
+      
       if (editingVoucher) {
-        await axiosInstance.put(`/vouchers/${editingVoucher.id}`, data);
+        await axiosInstance.put(`/admin/vouchers/${editingVoucher.id}`, data, config);
         message.success('Cập nhật voucher thành công');
       } else {
-        await axiosInstance.post('/vouchers', data);
+        await axiosInstance.post('/admin/vouchers', data, config);
         message.success('Tạo voucher thành công');
       }
 
@@ -103,7 +125,12 @@ const VoucherList = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await axiosInstance.delete(`/vouchers/${id}`);
+      const token = localStorage.getItem('token');
+      await axiosInstance.delete(`/admin/vouchers/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       message.success('Xóa voucher thành công');
       fetchVouchers();
     } catch (error) {

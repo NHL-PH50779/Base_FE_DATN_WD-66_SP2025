@@ -134,3 +134,15 @@ export const getProductsByCategory = async (categoryId: number) => {
     return { data: [] };
   }
 };
+
+export const getTrashedProducts = async () => {
+  try {
+    const response = await productApi.getTrashed();
+    console.log('Raw API response:', response);
+    // Trả về response trực tiếp, không parse
+    return response;
+  } catch (error) {
+    console.error("Error fetching trashed products:", error);
+    return { data: [] };
+  }
+};

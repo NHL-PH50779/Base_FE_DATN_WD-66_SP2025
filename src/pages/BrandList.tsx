@@ -34,13 +34,13 @@ const BrandList = () => {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    fetchBrands();
+    fetchBrands(true); // Force refresh khi load trang
   }, []);
 
-  const fetchBrands = async () => {
+  const fetchBrands = async (forceRefresh = false) => {
     setLoading(true);
     try {
-      const response = await brandService.getAllBrands();
+      const response = await brandService.getAllBrands(forceRefresh);
       setBrands(response.data);
     } catch (error) {
       message.error('Lỗi khi tải danh sách thương hiệu');
@@ -71,7 +71,7 @@ const BrandList = () => {
         message.success('Thêm thương hiệu thành công');
       }
       setModalVisible(false);
-      fetchBrands();
+      fetchBrands(true); // Force refresh
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Có lỗi xảy ra');
     }
@@ -83,7 +83,15 @@ const BrandList = () => {
       message.success('Xóa thương hiệu thành công');
       fetchBrands();
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Có lỗi xảy ra');
+      if (error.response?.status === 404) {
+        message.warning('Thương hiệu đã được xóa trước đó');
+      } else if (error.response?.status === 400) {
+        message.error(error.response?.data?.message || 'Không thể xóa thương hiệu này');
+      } else {
+        message.error(error.response?.data?.message || 'Có lỗi xảy ra');
+      }
+      // Force refresh sau mọi lỗi
+      fetchBrands(true);
     }
   };
 
@@ -133,21 +141,23 @@ const BrandList = () => {
           >
             Sửa
           </Button>
-          <Popconfirm
-            title="Bạn có chắc muốn xóa thương hiệu này?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Có"
-            cancelText="Không"
-          >
-            <Button
-              type="primary"
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
+          {record.name !== 'Không xác định' && (
+            <Popconfirm
+              title="Bạn có chắc muốn xóa thương hiệu này?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Có"
+              cancelText="Không"
             >
-              Xóa
-            </Button>
-          </Popconfirm>
+              <Button
+                type="primary"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+              >
+                Xóa
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Button, Image, message } from 'antd';
+import { Upload, Button, message } from 'antd';
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -69,12 +69,16 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ value, onChange }) => {
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
       {imageUrl ? (
         <div style={{ position: 'relative', display: 'inline-block' }}>
-          <Image
+          <img
             src={imageUrl}
-            alt="Preview"
-            width={100}
-            height={100}
-            style={{ objectFit: 'cover', borderRadius: 8 }}
+            alt="Product Image"
+            style={{ 
+              width: 100, 
+              height: 100, 
+              objectFit: 'cover', 
+              borderRadius: 8,
+              border: '1px solid #d9d9d9'
+            }}
           />
           <Button
             type="text"

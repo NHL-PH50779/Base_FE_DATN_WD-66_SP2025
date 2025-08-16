@@ -5,7 +5,7 @@ const API_URL = "http://localhost:8000/api";
 
 export const getAllLaptops = () => {
   const token = localStorage.getItem('token');
-  return axios.get(`${API_URL}/products`, {
+  return axios.get(`${API_URL}/admin/products`, {
     headers: {
       'Authorization': `Bearer ${token}`
     }
@@ -13,7 +13,7 @@ export const getAllLaptops = () => {
 };
 
 export const getLaptopById = (id: number) => {
-  return axios.get(`${API_URL}/products/${id}`);
+  return axios.get(`${API_URL}/admin/products/${id}`);
 };
 
 export const searchLaptops = (keyword: string) => {
@@ -21,28 +21,40 @@ export const searchLaptops = (keyword: string) => {
 };
 
 export const createLaptop = (data: Partial<Laptop>) => {
-  return axios.post(`${API_URL}/products`, data);
+  return axios.post(`${API_URL}/admin/products`, data);
 };
 
 export const updateLaptop = (id: number, data: Partial<Laptop>) => {
-  return axios.put(`${API_URL}/products/${id}`, data);
+  return axios.put(`${API_URL}/admin/products/${id}`, data);
 };
 
 export const deleteLaptop = (id: number) => {
-  return axios.delete(`${API_URL}/products/${id}`);
+  return axios.delete(`${API_URL}/admin/products/${id}`);
 };
 
 export const getTrashedLaptops = () => {
-  return axios.get(`${API_URL}/products/trashed`);
+  const token = localStorage.getItem('token');
+  console.log('Token for trashed:', token);
+  return axios.get(`${API_URL}/admin/products/trashed`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
 };
 
 export const restoreLaptop = (id: number) => {
-  return axios.put(`${API_URL}/products/restore/${id}`);
+  const token = localStorage.getItem('token');
+  return axios.put(`${API_URL}/admin/products/restore/${id}`, {}, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
 };
 
 export const toggleActiveLaptop = (id: number) => {
   const token = localStorage.getItem('token');
-  return axios.put(`${API_URL}/products/toggle-active/${id}`, {}, {
+  return axios.put(`${API_URL}/admin/products/toggle-active/${id}`, {}, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'

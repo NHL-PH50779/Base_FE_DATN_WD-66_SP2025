@@ -16,6 +16,8 @@ import ReviewManagement from "../pages/ReviewManagement";
 import VoucherList from "../pages/VoucherList";
 import ProductDetail from "../pages/ProductDetail";
 import FlashSaleManagement from "../pages/FlashSaleManagement";
+import TrashedProducts from "../pages/TrashedProducts";
+import AdminProfile from "../pages/AdminProfile";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
@@ -59,6 +61,7 @@ const routes = [
       { path: "products/create", element: <ProductCreate /> },
       { path: "products/edit/:id", element: <ProductEdit /> },
       { path: "products/detail/:id", element: <ProductDetail /> },
+      { path: "products/trashed", element: <TrashedProducts /> },
 
       { path: "categories", element: <CategoryList /> },
       { path: "categories/:id", element: <CategoryDetail /> },
@@ -89,6 +92,9 @@ const routes = [
       
       // Quản lý Flash Sale
       { path: "flash-sales", element: <FlashSaleManagement /> },
+      
+      // Thông tin tài khoản
+      { path: "profile", element: <AdminProfile /> },
     ],
   },
   

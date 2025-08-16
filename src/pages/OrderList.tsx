@@ -169,39 +169,34 @@ const OrderList = () => {
   };
 
   const handleStatusChange = async (orderId: number, newStatusId: number) => {
-    setUpdating(orderId);
-    try {
-      console.log('Changing status for order:', orderId, 'to:', newStatusId);
-      const result = await orderService.updateOrderStatus(orderId, newStatusId, 1);
-      console.log('Status change result:', result);
-      
-      // Tự động cập nhật trạng thái thanh toán
-      if (newStatusId === 8) { // Đồng ý hoàn hàng -> Đã hoàn tiền
-        await orderService.updatePaymentStatus(orderId, 3);
-        message.success('Cập nhật trạng thái thành công và đã hoàn tiền!');
-      } else {
-        message.success('Cập nhật trạng thái thành công!');
-      }
-      
-      // Optimistic update - cập nhật ngay trên UI
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderId 
-            ? { ...order, order_status_id: newStatusId }
-            : order
-        )
-      );
-      
-      // Refresh data sau 1s
-      setTimeout(() => {
-        fetchOrders(false);
-      }, 1000);
-    } catch (error) {
-      console.error('Error updating status:', error);
-      message.error('Lỗi khi cập nhật trạng thái: ' + (error as any)?.message);
-    } finally {
-      setUpdating(null);
+    // Optimistic update ngay lập tức
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderId 
+          ? { ...order, order_status_id: newStatusId, payment_status_id: newStatusId === 8 ? 3 : order.payment_status_id }
+          : order
+      )
+    );
+    
+    // Hiện thông báo ngay
+    if (newStatusId === 8) {
+      message.success('Cập nhật trạng thái thành công và đã hoàn tiền!');
+    } else {
+      message.success('Cập nhật trạng thái thành công!');
     }
+    
+    // Gọi API trong background (không chờ kết quả)
+    orderService.updateOrderStatus(orderId, newStatusId, 1)
+      .then(() => {
+        if (newStatusId === 8) {
+          return orderService.updatePaymentStatus(orderId, 3);
+        }
+      })
+      .catch((error) => {
+        // Nếu lỗi, revert lại trạng thái cũ
+        fetchOrders(false);
+        message.error('Lỗi khi cập nhật trạng thái: ' + (error as any)?.message);
+      });
   };
 
   const handleRefundRequest = (order: Order, approve: boolean) => {
@@ -245,8 +240,8 @@ const OrderList = () => {
         return allStatuses.filter(([key]) => ['2', '3'].includes(key));
       case 3: // Đang vận chuyển -> Admin có thể: Đã giao
         return allStatuses.filter(([key]) => ['3', '4'].includes(key));
-      case 4: // Đã giao hàng -> Admin có thể chuyển thành Hoàn thành hoặc chờ client xác nhận
-        return allStatuses.filter(([key]) => ['4', '5'].includes(key));
+      case 4: // Đã giao hàng -> Chỉ hiển thị trạng thái hiện tại, chờ client xác nhận
+        return allStatuses.filter(([key]) => key === '4');
       case 5: // Hoàn thành -> Không thể thay đổi
         return allStatuses.filter(([key]) => key === '5');
       case 6: // Đã hủy -> Không thể thay đổi
@@ -338,7 +333,7 @@ const OrderList = () => {
         const availableStatuses = getAvailableStatuses(statusId);
         const isDisabled = statusId === 5 || statusId === 6; // Hoàn thành hoặc đã hủy
         
-        const canEdit = ![5, 6, 8].includes(statusId); // Không thể sửa: Hoàn thành, Đã hủy, Đồng ý hoàn hàng
+        const canEdit = ![4, 5, 6, 8].includes(statusId); // Không thể sửa: Đã giao hàng, Hoàn thành, Đã hủy, Đồng ý hoàn hàng
         const currentStatus = statusConfig[statusId as keyof typeof statusConfig];
         
         if (!canEdit) {
@@ -357,21 +352,9 @@ const OrderList = () => {
             style={{ width: 160 }}
             onChange={(value) => {
               const statusInfo = statusConfig[value as keyof typeof statusConfig];
-              Modal.confirm({
-                title: 'Xác nhận thay đổi trạng thái',
-                icon: <ExclamationCircleOutlined />,
-                content: (
-                  <div>
-                    <p>Thay đổi trạng thái thành: <strong>{statusInfo?.label}</strong></p>
-                    <p style={{ color: '#666', fontSize: '12px' }}>{statusInfo?.description}</p>
-                  </div>
-                ),
-                onOk: () => handleStatusChange(record.id, value),
-                okText: 'Xác nhận',
-                cancelText: 'Hủy'
-              });
+              handleStatusChange(record.id, value);
             }}
-            loading={updating === record.id}
+
             size="small"
           >
             {availableStatuses.map(([key, config]) => (

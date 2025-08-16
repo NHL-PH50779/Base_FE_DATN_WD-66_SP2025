@@ -58,7 +58,12 @@ export const orderService = {
     }
     
     try {
-      const response = await axiosInstance.get("/admin/orders");
+      const token = localStorage.getItem('token');
+      const response = await axiosInstance.get("/admin/orders", {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = parseResponse(response);
       const orders = Array.isArray(data) ? data : (data.data || []);
       
@@ -79,8 +84,14 @@ export const orderService = {
   updateOrderStatus: async (orderId: number, orderStatusId: number, paymentStatusId: number = 1) => {
     try {
       console.log('Updating order status:', { orderId, orderStatusId, paymentStatusId });
+      const token = localStorage.getItem('token');
       const response = await axiosInstance.put(`/admin/orders/${orderId}/order-status`, {
         order_status_id: orderStatusId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       console.log('Update response:', response.data);
       

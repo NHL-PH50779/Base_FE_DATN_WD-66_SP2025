@@ -38,8 +38,11 @@ const LaptopListPage = () => {
       await deleteLaptop(id); // This will be soft delete
       message.success("Đã chuyển vào thùng rác");
       fetchLaptops();
-    } catch {
-      message.error("Xóa thất bại");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Xóa thất bại";
+      message.error(errorMessage);
+      // Refresh danh sách để đồng bộ với server
+      fetchLaptops();
     }
   };
 
@@ -119,14 +122,7 @@ const LaptopListPage = () => {
       title={<span style={{ color: "#1890ff", fontWeight: 700, fontSize: 22 }}>Quản lý Laptop</span>}
       extra={
         <Space>
-          <Button 
-            icon={<DeleteOutlined />}
-            onClick={() => navigate("/admin/products/trashed")}
-            style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
-          >
-            Thùng rác
-          </Button>
-          <Button type="primary" onClick={() => navigate("/admin/laptops/create")}
+          <Button type="primary" onClick={() => navigate("/admin/laptops/create"))
             style={{ background: "linear-gradient(90deg,#1890ff 0%,#52c41a 100%)", border: "none" }}>
             Thêm laptop
           </Button>

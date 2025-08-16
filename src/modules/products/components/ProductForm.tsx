@@ -121,7 +121,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
             if (product.thumbnail) {
               const thumbnailUrl = product.thumbnail.startsWith('http') 
                 ? product.thumbnail 
-                : `http://127.0.0.1:8000/storage/products/${product.thumbnail.replace('products/', '')}`;
+                : `http://127.0.0.1:8000/storage/${product.thumbnail.replace('products/', '')}`;
               setFileList([{
                 uid: '-1',
                 name: 'thumbnail.png',

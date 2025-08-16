@@ -42,8 +42,16 @@ const CategoryList = () => {
     try {
       const response = await categoryService.getAllCategories();
       setCategories(response.data);
-    } catch (error) {
-      message.error('Lỗi khi tải danh sách danh mục');
+      
+      // Hiển thị thông báo nếu có lỗi nhưng vẫn có data
+      if (response.error) {
+        message.warning(response.error);
+      }
+    } catch (error: any) {
+      const errorMsg = error.message.includes('timeout') || error.message.includes('chậm')
+        ? 'Kết nối chậm - Vui lòng kiểm tra mạng'
+        : 'Lỗi khi tải danh sách danh mục';
+      message.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -73,7 +81,10 @@ const CategoryList = () => {
       setModalVisible(false);
       fetchCategories();
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Có lỗi xảy ra');
+      const errorMsg = error.message.includes('timeout') || error.message.includes('chậm')
+        ? 'Kết nối chậm - Vui lòng thử lại'
+        : error.response?.data?.message || 'Có lỗi xảy ra';
+      message.error(errorMsg);
     }
   };
 
@@ -83,7 +94,10 @@ const CategoryList = () => {
       message.success('Xóa danh mục thành công');
       fetchCategories();
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Có lỗi xảy ra');
+      const errorMsg = error.message.includes('timeout') || error.message.includes('chậm')
+        ? 'Kết nối chậm - Vui lòng thử lại'
+        : error.response?.data?.message || 'Có lỗi xảy ra';
+      message.error(errorMsg);
     }
   };
 

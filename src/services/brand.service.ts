@@ -16,9 +16,10 @@ const parseResponse = (response: any) => {
 };
 
 export const brandService = {
-  getAllBrands: async () => {
+  getAllBrands: async (forceRefresh = false) => {
     try {
-      const response = await axiosInstance.get("/brands");
+      const url = forceRefresh ? `/brands?t=${Date.now()}` : "/brands";
+      const response = await axiosInstance.get(url);
       const data = parseResponse(response);
       return { data: Array.isArray(data) ? data : (data.data || []) };
     } catch (error) {
@@ -40,7 +41,13 @@ export const brandService = {
 
   createBrand: async (brandData: { name: string }) => {
     try {
-      const response = await axiosInstance.post("/admin/brands", brandData);
+      const token = localStorage.getItem('token');
+      const response = await axiosInstance.post("/admin/brands", brandData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       return parseResponse(response);
     } catch (error) {
       console.error("Error creating brand:", error);
@@ -50,7 +57,13 @@ export const brandService = {
 
   updateBrand: async (id: number, brandData: { name: string }) => {
     try {
-      const response = await axiosInstance.put(`/admin/brands/${id}`, brandData);
+      const token = localStorage.getItem('token');
+      const response = await axiosInstance.put(`/admin/brands/${id}`, brandData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       return parseResponse(response);
     } catch (error) {
       console.error("Error updating brand:", error);
@@ -60,7 +73,12 @@ export const brandService = {
 
   deleteBrand: async (id: number) => {
     try {
-      const response = await axiosInstance.delete(`/admin/brands/${id}`);
+      const token = localStorage.getItem('token');
+      const response = await axiosInstance.delete(`/admin/brands/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       return parseResponse(response);
     } catch (error) {
       console.error("Error deleting brand:", error);

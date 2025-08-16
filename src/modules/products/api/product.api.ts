@@ -47,6 +47,11 @@ export const productApi = {
     const response = await axiosInstance.delete(`/admin/products/force-delete/${id}`);
     return response;
   },
+  
+  getTrashed: async () => {
+    const response = await axiosInstance.get("/admin/products/trashed");
+    return response;
+  },
 
   toggleActive: async (id: number) => {
     const response = await axiosInstance.put(`/admin/products/toggle-active/${id}`);

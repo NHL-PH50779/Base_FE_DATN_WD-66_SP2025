@@ -20,6 +20,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   BellOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -84,11 +85,26 @@ const AdminLayout = () => {
       key: 'profile',
       icon: <UserOutlined />,
       label: 'Tài khoản',
+      onClick: () => {
+        navigate('/admin/profile');
+      },
     },
     {
       key: 'settings',
       icon: <SettingOutlined />,
       label: 'Cài đặt',
+      onClick: () => {
+        message.info('Chức năng cài đặt đang được phát triển');
+      },
+    },
+    {
+      key: 'client',
+      icon: <GlobalOutlined />,
+      label: (
+        <a href="http://localhost:5174" target="_blank" rel="noopener noreferrer">
+          Xem trang Client
+        </a>
+      ),
     },
     {
       type: 'divider',
@@ -315,6 +331,28 @@ const AdminLayout = () => {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <a 
+              href="http://localhost:5174" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#fff',
+                textDecoration: 'none',
+                fontSize: 16,
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.3s ease'
+              }}
+              title="Xem trang Client"
+            >
+              <GlobalOutlined />
+            </a>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <BulbOutlined style={{ color: darkMode ? '#fff' : '#333' }} />
               <Switch
@@ -350,27 +388,15 @@ const AdminLayout = () => {
               }} />
             </button>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                cursor: 'pointer',
-                padding: '8px 16px',
-                borderRadius: 12,
-                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                color: '#fff',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)'
-              }}>
-                <Avatar 
-                  style={{ 
-                    backgroundColor: 'rgba(255,255,255,0.2)', 
-                    marginRight: 12,
-                    border: '2px solid rgba(255,255,255,0.3)'
-                  }}
-                  icon={<UserOutlined />}
-                />
-                <span style={{ fontWeight: 500 }}>{user?.name || 'Admin'}</span>
-              </div>
+              <Avatar 
+                size={32}
+                style={{ 
+                  backgroundColor: '#3b82f6', 
+                  cursor: 'pointer',
+                  border: '2px solid rgba(59, 130, 246, 0.3)'
+                }}
+                icon={<UserOutlined />}
+              />
             </Dropdown>
           </div>
         </Header>

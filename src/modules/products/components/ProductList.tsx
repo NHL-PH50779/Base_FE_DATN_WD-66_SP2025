@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Table, Button, Space, Tag, Input, Modal, message, Card, Switch, Tabs } from "antd";
 import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, EyeOutlined, UndoOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getAllProducts, deleteProduct, toggleActiveProduct, searchProducts, restoreProduct, forceDeleteProduct } from "../services/product.service";
 import { getAllBrands } from "../services/brand.service";
 import { getAllCategories } from "../services/category.service";
@@ -18,6 +18,7 @@ export default function ProductList() {
   const [brands, setBrands] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -58,6 +59,16 @@ export default function ProductList() {
   useEffect(() => {
     fetchAllData();
   }, []);
+  
+  // Detect refresh param from restore
+  useEffect(() => {
+    const refreshParam = searchParams.get('refresh');
+    if (refreshParam) {
+      fetchAllData();
+      // Clear URL param
+      navigate('/admin/products', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Tìm kiếm local (không gọi API)
   const handleSearch = (value: string) => {
@@ -182,7 +193,7 @@ export default function ProductList() {
       render: (thumbnail: string) => (
         thumbnail ? 
         <img 
-          src={thumbnail.startsWith('http') ? thumbnail : `http://localhost/storage/products/${thumbnail}`} 
+          src={thumbnail.startsWith('http') ? thumbnail : `http://127.0.0.1:8000/storage/${thumbnail.replace('products/', '')}`} 
           alt="Thumbnail" 
           style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} 
         /> : 
@@ -258,7 +269,7 @@ export default function ProductList() {
       render: (thumbnail: string) => (
         thumbnail ? 
         <img 
-          src={thumbnail.startsWith('http') ? thumbnail : `http://localhost/storage/products/${thumbnail}`} 
+          src={thumbnail.startsWith('http') ? thumbnail : `http://127.0.0.1:8000/storage/${thumbnail.replace('products/', '')}`} 
           alt="Thumbnail" 
           style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} 
         /> : 
@@ -357,25 +368,6 @@ export default function ProductList() {
           />
         </div>
       )
-    },
-    {
-      key: 'trashed',
-      label: `Thùng rác (${trashedProducts.length})`,
-      children: (
-        <Table
-          columns={trashedColumns}
-          dataSource={trashedProducts}
-          rowKey="id"
-          loading={loading}
-          pagination={{ 
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} sản phẩm đã xóa`
-          }}
-          style={{ borderRadius: 12, overflow: "hidden" }}
-        />
-      )
     }
   ];
 
@@ -396,6 +388,13 @@ export default function ProductList() {
       }}
       extra={
         <Space>
+          <Button 
+            icon={<DeleteOutlined />}
+            onClick={() => navigate("/admin/products/trashed")}
+            style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
+          >
+            Thùng rác
+          </Button>
           <Button
             type="primary"
             icon={<PlusOutlined />}
