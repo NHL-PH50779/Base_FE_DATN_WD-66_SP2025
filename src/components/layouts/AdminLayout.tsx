@@ -21,6 +21,7 @@ import {
   MenuUnfoldOutlined,
   BellOutlined,
   GlobalOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -53,7 +54,7 @@ const AdminLayout = () => {
   const getOpenKeys = () => {
     if (selectedKey === 'dashboard') return ['dashboard'];
     if (['products', 'categories', 'brands', 'attributes'].includes(selectedKey)) return ['product-management'];
-    if (['orders', 'return-requests'].includes(selectedKey)) return ['order-management'];
+    if (['orders', 'return-requests', 'withdraw-requests'].includes(selectedKey)) return ['order-management'];
     if (selectedKey === 'users') return ['user-management'];
     if (['comments', 'reviews', 'vouchers'].includes(selectedKey)) return ['content-management'];
     return [];
@@ -164,6 +165,11 @@ const AdminLayout = () => {
           key: 'return-requests',
           icon: <ShoppingCartOutlined />,
           label: <Link to="/admin/return-requests">Hoàn hàng</Link>,
+        },
+        {
+          key: 'withdraw-requests',
+          icon: <BankOutlined />,
+          label: <Link to="/admin/withdraw-requests">Rút tiền</Link>,
         },
       ],
     },

@@ -73,10 +73,7 @@ const statusConfig = {
   3: { label: 'Đang vận chuyển', color: 'cyan', description: 'Admin đã chuyển sang trạng thái vận chuyển' },
   4: { label: 'Đã giao hàng', color: 'purple', description: 'Admin xác nhận đã giao hàng' },
   5: { label: 'Hoàn thành', color: 'green', description: 'Khách hàng đã nhận hàng hoặc tự động sau 3 ngày' },
-  6: { label: 'Đã hủy', color: 'red', description: 'Khách hàng hoặc Admin hủy đơn' },
-  7: { label: 'Yêu cầu hoàn hàng', color: 'volcano', description: 'Khách hàng yêu cầu hoàn hàng' },
-  8: { label: 'Đồng ý hoàn hàng', color: 'magenta', description: 'Admin đồng ý hoàn hàng' },
-  9: { label: 'Từ chối hoàn hàng', color: 'red', description: 'Admin từ chối hoàn hàng' }
+  6: { label: 'Đã hủy', color: 'red', description: 'Khách hàng hoặc Admin hủy đơn' }
 };
 
 const paymentStatusConfig = {
@@ -141,7 +138,10 @@ const OrderList = () => {
     if (showLoading) setLoading(true);
     try {
       const response = await orderService.getAllOrders(useCache);
-      const newOrders = response.data;
+      const allOrders = response.data;
+      
+      // Lọc bỏ các đơn hàng có trạng thái hoàn hàng (7,8,9)
+      const newOrders = allOrders.filter((order: Order) => ![7, 8, 9].includes(order.order_status_id));
       
       // Kiểm tra có đơn hàng nào chuyển thành "Hoàn thành" không
       if (orders.length > 0) {
@@ -173,25 +173,16 @@ const OrderList = () => {
     setOrders(prevOrders => 
       prevOrders.map(order => 
         order.id === orderId 
-          ? { ...order, order_status_id: newStatusId, payment_status_id: newStatusId === 8 ? 3 : order.payment_status_id }
+          ? { ...order, order_status_id: newStatusId }
           : order
       )
     );
     
     // Hiện thông báo ngay
-    if (newStatusId === 8) {
-      message.success('Cập nhật trạng thái thành công và đã hoàn tiền!');
-    } else {
-      message.success('Cập nhật trạng thái thành công!');
-    }
+    message.success('Cập nhật trạng thái thành công!');
     
     // Gọi API trong background (không chờ kết quả)
     orderService.updateOrderStatus(orderId, newStatusId, 1)
-      .then(() => {
-        if (newStatusId === 8) {
-          return orderService.updatePaymentStatus(orderId, 3);
-        }
-      })
       .catch((error) => {
         // Nếu lỗi, revert lại trạng thái cũ
         fetchOrders(false);
@@ -199,31 +190,7 @@ const OrderList = () => {
       });
   };
 
-  const handleRefundRequest = (order: Order, approve: boolean) => {
-    const newStatusId = approve ? 8 : 9; // 8: Đồng ý, 9: Từ chối
-    const actionText = approve ? 'đồng ý' : 'từ chối';
-    
-    Modal.confirm({
-      title: `Xác nhận ${actionText} hoàn hàng`,
-      content: (
-        <div>
-          <p>Bạn có chắc chắn muốn <strong>{actionText}</strong> yêu cầu hoàn hàng cho đơn hàng #{order.id}?</p>
-          {approve && (
-            <div style={{ marginTop: 10, padding: 10, backgroundColor: '#fff2e8', borderRadius: 4 }}>
-              <p style={{ margin: 0, fontSize: '12px', color: '#d46b08' }}>
-                ⚠️ Lưu ý: Nếu đồng ý hoàn hàng, hệ thống sẽ tự động:
-                <br />- Chuyển trạng thái thanh toán thành "Đã hoàn tiền"
-                <br />- Hoàn tiền vào ví (nếu thanh toán online) hoặc liên hệ khách hàng (nếu COD)
-              </p>
-            </div>
-          )}
-        </div>
-      ),
-      onOk: () => handleStatusChange(order.id, newStatusId),
-      okText: 'Xác nhận',
-      cancelText: 'Hủy'
-    });
-  };
+
 
   const canCancelOrder = (order: Order) => {
     return order.order_status_id === 3; // Chỉ đang giao mới được hủy
@@ -246,12 +213,6 @@ const OrderList = () => {
         return allStatuses.filter(([key]) => key === '5');
       case 6: // Đã hủy -> Không thể thay đổi
         return allStatuses.filter(([key]) => key === '6');
-      case 7: // Yêu cầu hoàn hàng -> Admin có thể: Đồng ý hoặc Từ chối
-        return allStatuses.filter(([key]) => ['7', '8', '9'].includes(key));
-      case 8: // Đồng ý hoàn hàng -> Không thể thay đổi
-        return allStatuses.filter(([key]) => key === '8');
-      case 9: // Từ chối hoàn hàng -> Trở về Đã giao
-        return allStatuses.filter(([key]) => ['9', '4'].includes(key));
       default:
         return allStatuses;
     }
@@ -333,7 +294,7 @@ const OrderList = () => {
         const availableStatuses = getAvailableStatuses(statusId);
         const isDisabled = statusId === 5 || statusId === 6; // Hoàn thành hoặc đã hủy
         
-        const canEdit = ![4, 5, 6, 8].includes(statusId); // Không thể sửa: Đã giao hàng, Hoàn thành, Đã hủy, Đồng ý hoàn hàng
+        const canEdit = ![4, 5, 6].includes(statusId); // Không thể sửa: Đã giao hàng, Hoàn thành, Đã hủy
         const currentStatus = statusConfig[statusId as keyof typeof statusConfig];
         
         if (!canEdit) {
@@ -349,12 +310,11 @@ const OrderList = () => {
         return (
           <Select
             value={statusId}
-            style={{ width: 160 }}
+            style={{ width: 145 }}
             onChange={(value) => {
               const statusInfo = statusConfig[value as keyof typeof statusConfig];
               handleStatusChange(record.id, value);
             }}
-
             size="small"
           >
             {availableStatuses.map(([key, config]) => (
@@ -385,25 +345,7 @@ const OrderList = () => {
           >
             Chi tiết
           </Button>
-          {record.order_status_id === 7 && ( // Yêu cầu hoàn hàng
-            <>
-              <Button
-                type="primary"
-                size="small"
-                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-                onClick={() => handleRefundRequest(record, true)}
-              >
-                Đồng ý
-              </Button>
-              <Button
-                danger
-                size="small"
-                onClick={() => handleRefundRequest(record, false)}
-              >
-                Từ chối
-              </Button>
-            </>
-          )}
+
         </Space>
       ),
     },

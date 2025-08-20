@@ -1,8 +1,9 @@
 import React from "react";
-import { Card, Col, Row, Statistic, List, Badge } from "antd";
+import { Card, Col, Row, Statistic, List, Badge, Typography } from "antd";
 import { axiosInstance } from "../utils/axios.util";
 import { dashboardService } from '../services/dashboard.service';
 import CommentReviewStats from '../components/dashboard/CommentReviewStats';
+import DashboardFilters from '../components/dashboard/DashboardFilters';
 import {
   LaptopOutlined,
   ShoppingCartOutlined,
@@ -22,6 +23,9 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import dayjs from 'dayjs';
+
+const { Title } = Typography;
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = React.useState({
@@ -34,6 +38,12 @@ const Dashboard: React.FC = () => {
     thisMonth: { orders: 0, revenue: 0 }
   });
   const [loading, setLoading] = React.useState(false);
+  
+  // Filter states
+  const [dateRange, setDateRange] = React.useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
+  const [timeFilter, setTimeFilter] = React.useState<string>('all');
+  const [statusFilter, setStatusFilter] = React.useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
 
   React.useEffect(() => {
     fetchStats();
@@ -123,58 +133,92 @@ const Dashboard: React.FC = () => {
     return colors[statusId as keyof typeof colors] || '#faad14';
   };
 
+  const handleFilterChange = () => {
+    fetchStats();
+  };
+
+  const resetFilters = () => {
+    setDateRange(null);
+    setTimeFilter('all');
+    setStatusFilter('all');
+    setCategoryFilter('all');
+    fetchStats();
+  };
+
   return (
     <div>
-      <h2 style={{ color: "#1890ff", fontWeight: 700 }}>Thống kê tổng quan</h2>
+      {/* Bộ lọc Dashboard */}
+      <DashboardFilters
+        timeFilter={timeFilter}
+        setTimeFilter={setTimeFilter}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        onApplyFilters={handleFilterChange}
+        onResetFilters={resetFilters}
+        onRefresh={fetchStats}
+        loading={loading}
+      />
+
+      {/* Thống kê tổng quan */}
+      <Title level={3} style={{ color: "#1890ff", marginBottom: 16 }}>📊 Thống kê tổng quan</Title>
       <Row gutter={16}>
-        <Col span={6}>
-          <Card style={{ borderTop: "4px solid #1890ff" }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card style={{ borderTop: "4px solid #1890ff", borderRadius: 8, marginBottom: 16 }}>
             <Statistic
-              title="Sản phẩm"
+              title="Tổng sản phẩm"
               value={stats.laptops}
               prefix={<LaptopOutlined />}
               loading={loading}
+              valueStyle={{ color: '#1890ff' }}
             />
           </Card>
         </Col>
-        <Col span={6}>
-          <Card style={{ borderTop: "4px solid #52c41a" }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card style={{ borderTop: "4px solid #52c41a", borderRadius: 8, marginBottom: 16 }}>
             <Statistic
-              title="Đơn hàng"
+              title="Tổng đơn hàng"
               value={stats.orders}
               prefix={<ShoppingCartOutlined />}
               loading={loading}
+              valueStyle={{ color: '#52c41a' }}
             />
           </Card>
         </Col>
-        <Col span={6}>
-          <Card style={{ borderTop: "4px solid #faad14" }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card style={{ borderTop: "4px solid #faad14", borderRadius: 8, marginBottom: 16 }}>
             <Statistic
-              title="Người dùng"
+              title="Tổng người dùng"
               value={stats.users}
               prefix={<UserOutlined />}
               loading={loading}
+              valueStyle={{ color: '#faad14' }}
             />
           </Card>
         </Col>
-        <Col span={6}>
-          <Card style={{ borderTop: "4px solid #f5222d" }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card style={{ borderTop: "4px solid #f5222d", borderRadius: 8, marginBottom: 16 }}>
             <Statistic
-              title="Doanh thu"
+              title="Tổng doanh thu"
               value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stats.revenue)}
               prefix={<DollarOutlined />}
               loading={loading}
+              valueStyle={{ color: '#f5222d' }}
             />
           </Card>
         </Col>
       </Row>
 
-      {/* Thống kê danh mục và tháng này */}
-      <Row gutter={16} style={{ marginTop: 16 }}>
+      {/* Thống kê theo thời gian */}
+      <Title level={4} style={{ color: "#52c41a", marginTop: 24, marginBottom: 16 }}>📈 Thống kê theo thời gian</Title>
+      <Row gutter={16}>
         <Col span={8}>
-          <Card style={{ borderTop: "4px solid #722ed1" }}>
+          <Card style={{ borderTop: "4px solid #722ed1", borderRadius: 8 }}>
             <Statistic
-              title="Danh mục"
+              title="Danh mục sản phẩm"
               value={stats.categories}
               prefix={<LaptopOutlined />}
               loading={loading}
@@ -182,7 +226,7 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
         <Col span={8}>
-          <Card style={{ borderTop: "4px solid #13c2c2" }}>
+          <Card style={{ borderTop: "4px solid #13c2c2", borderRadius: 8 }}>
             <Statistic
               title="Đơn hàng tháng này"
               value={stats.thisMonth.orders}
@@ -192,7 +236,7 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
         <Col span={8}>
-          <Card style={{ borderTop: "4px solid #eb2f96" }}>
+          <Card style={{ borderTop: "4px solid #eb2f96", borderRadius: 8 }}>
             <Statistic
               title="Doanh thu tháng này"
               value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stats.thisMonth.revenue)}
@@ -204,17 +248,26 @@ const Dashboard: React.FC = () => {
       </Row>
 
       {/* Thống kê đơn hàng theo trạng thái */}
-      <Row gutter={16} style={{ marginTop: 16 }}>
+      <Title level={4} style={{ color: "#faad14", marginTop: 24, marginBottom: 16 }}>🛒 Phân tích đơn hàng</Title>
+      <Row gutter={16}>
         <Col span={24}>
-          <Card title={<span style={{ color: "#1890ff" }}>Thống kê đơn hàng theo trạng thái</span>} style={{ borderRadius: 12 }}>
+          <Card title={<span style={{ color: "#1890ff" }}>📋 Thống kê đơn hàng theo trạng thái</span>} style={{ borderRadius: 12 }}>
             <Row gutter={16}>
               {stats.ordersByStatus.map((status) => (
                 <Col span={6} key={status.status_id}>
-                  <Card size="small" style={{ textAlign: 'center', marginBottom: 8 }}>
+                  <Card 
+                    size="small" 
+                    style={{ 
+                      textAlign: 'center', 
+                      marginBottom: 8,
+                      borderLeft: `4px solid ${getStatusColor(status.status_id)}`,
+                      borderRadius: 8
+                    }}
+                  >
                     <Statistic
                       title={status.status_name}
                       value={status.count}
-                      valueStyle={{ color: getStatusColor(status.status_id) }}
+                      valueStyle={{ color: getStatusColor(status.status_id), fontWeight: 'bold' }}
                     />
                   </Card>
                 </Col>
@@ -225,17 +278,20 @@ const Dashboard: React.FC = () => {
       </Row>
 
       {/* Thống kê bình luận và đánh giá */}
-      <Row gutter={16} style={{ marginTop: 16 }}>
+      <Title level={4} style={{ color: "#722ed1", marginTop: 24, marginBottom: 16 }}>💬 Thống kê tương tác</Title>
+      <Row gutter={16}>
         <Col span={24}>
           <CommentReviewStats />
         </Col>
       </Row>
 
-      <Row gutter={24} style={{ marginTop: 32 }}>
+      {/* Biểu đồ và thông báo */}
+      <Title level={4} style={{ color: "#f5222d", marginTop: 32, marginBottom: 16 }}>📈 Biểu đồ & Thông báo</Title>
+      <Row gutter={24}>
         <Col span={16}>
           <Card
             title={
-              <span style={{ color: "#1890ff" }}>Doanh thu theo tháng</span>
+              <span style={{ color: "#1890ff" }}>💰 Doanh thu theo tháng</span>
             }
             style={{ marginBottom: 24, borderRadius: 12 }}
           >
@@ -243,14 +299,14 @@ const Dashboard: React.FC = () => {
               <BarChart data={revenueData}>
                 <XAxis dataKey="month" />
                 <YAxis />
-                <Tooltip />
-                <Bar dataKey="revenue" fill="#1890ff" />
+                <Tooltip formatter={(value) => [new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value)), 'Doanh thu']} />
+                <Bar dataKey="revenue" fill="#1890ff" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
           <Card
             title={
-              <span style={{ color: "#52c41a" }}>Sản phẩm bán chạy</span>
+              <span style={{ color: "#52c41a" }}>🏆 Sản phẩm bán chạy</span>
             }
             style={{ borderRadius: 12 }}
           >
@@ -263,7 +319,7 @@ const Dashboard: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   outerRadius={80}
-                  label
+                  label={({name, value}) => `${name}: ${value}`}
                 >
                   {bestSellers.map((entry, index) => (
                     <Cell
@@ -282,7 +338,7 @@ const Dashboard: React.FC = () => {
           <Card
             title={
               <span style={{ color: "#faad14" }}>
-                <ExclamationCircleOutlined /> Thông báo
+                <ExclamationCircleOutlined /> 🔔 Thông báo quan trọng
               </span>
             }
             style={{ borderRadius: 12, minHeight: 530 }}
@@ -290,10 +346,11 @@ const Dashboard: React.FC = () => {
             <List
               dataSource={notifications}
               renderItem={(item) => (
-                <List.Item>
+                <List.Item style={{ padding: '12px 0' }}>
                   <Badge
                     status={item.type === "order" ? "processing" : "error"}
                     text={item.content}
+                    style={{ fontSize: '14px' }}
                   />
                 </List.Item>
               )}

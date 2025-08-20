@@ -125,21 +125,27 @@ const ReturnRequestList: React.FC = () => {
           );
         }
       } else {
-        // Xử lý yêu cầu hoàn hàng thông thường - gọi API processRefund
+        // Xử lý yêu cầu hoàn hàng thông thường
         const request = returnRequests.find(req => req.id === id);
         if (request) {
-          const response = await axiosInstance.post(`/admin/orders/${request.order_id}/process-refund`, {
-            approve: status === 'approved',
-            admin_note: status === 'approved' ? 'Chấp nhận hoàn hàng và hoàn tiền' : 'Từ chối hoàn hàng'
-          }, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          // Cập nhật trạng thái đơn hàng trực tiếp
+          if (status === 'approved') {
+            await axiosInstance.put(`/admin/orders/${request.order_id}/order-status`, {
+              order_status_id: 8
+            }, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            await axiosInstance.put(`/admin/orders/${request.order_id}/payment-status`, {
+              payment_status_id: 3
+            }, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+          }
           
-          console.log('Process refund response:', response.data);
+          message.success(`Đã ${status === 'approved' ? 'chấp nhận hoàn hàng và hoàn tiền' : 'từ chối hoàn hàng'}`);
           
-          message.success(`Đã ${status === 'approved' ? 'chấp nhận hoàn hàng và hoàn tiền vào ví' : 'từ chối hoàn hàng'}`);
-          
-          // Cập nhật trạng thái trong danh sách ngay lập tức
+          // Cập nhật trạng thái trong danh sách
           setReturnRequests(prev => 
             prev.map(req => {
               if (req.id === id) {
@@ -269,6 +275,8 @@ const ReturnRequestList: React.FC = () => {
     {
       title: 'Hành động',
       key: 'actions',
+      width: 120,
+      fixed: 'right',
       render: (record: ReturnRequest) => (
         <Space>
           <Button
@@ -276,9 +284,8 @@ const ReturnRequestList: React.FC = () => {
             size="small"
             icon={<EyeOutlined />}
             onClick={() => showDetail(record)}
-          >
-            Chi tiết
-          </Button>
+            title="Chi tiết"
+          />
           {record.status === 'pending' && (
             <>
               <Button
@@ -288,6 +295,7 @@ const ReturnRequestList: React.FC = () => {
                 style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                 loading={processingIds.has(record.id)}
                 disabled={processingIds.has(record.id)}
+                title="Chấp nhận"
                 onClick={() => {
                   if (String(record.id).startsWith('cancel_')) {
                     Modal.confirm({
@@ -309,19 +317,16 @@ const ReturnRequestList: React.FC = () => {
                     updateReturnRequestStatus(record.id, 'approved');
                   }
                 }}
-              >
-                Chấp nhận
-              </Button>
+              />
               <Button
                 danger
                 size="small"
                 icon={<CloseOutlined />}
                 loading={processingIds.has(record.id)}
                 disabled={processingIds.has(record.id)}
+                title="Từ chối"
                 onClick={() => updateReturnRequestStatus(record.id, 'rejected')}
-              >
-                Từ chối
-              </Button>
+              />
             </>
           )}
         </Space>
@@ -347,6 +352,7 @@ const ReturnRequestList: React.FC = () => {
         dataSource={returnRequests}
         rowKey="id"
         loading={loading}
+        scroll={{ x: 1200 }}
         pagination={{
           pageSize: 10,
           showSizeChanger: true,

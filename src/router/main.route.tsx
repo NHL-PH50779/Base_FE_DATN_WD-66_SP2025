@@ -18,6 +18,7 @@ import ProductDetail from "../pages/ProductDetail";
 import FlashSaleManagement from "../pages/FlashSaleManagement";
 import TrashedProducts from "../pages/TrashedProducts";
 import AdminProfile from "../pages/AdminProfile";
+import WithdrawRequestManagement from "../pages/WithdrawRequestManagement";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
@@ -80,8 +81,9 @@ const routes = [
       
 
       
-      // Quản lý hoàn hàng
+      // Quản lý hoàn hàng và rút tiền
       { path: "return-requests", element: <ReturnRequestList /> },
+      { path: "withdraw-requests", element: <WithdrawRequestManagement /> },
       
       // Quản lý bình luận và đánh giá
       { path: "comments", element: <CommentManagement /> },
