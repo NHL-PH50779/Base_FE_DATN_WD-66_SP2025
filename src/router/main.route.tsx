@@ -19,6 +19,7 @@ import FlashSaleManagement from "../pages/FlashSaleManagement";
 import TrashedProducts from "../pages/TrashedProducts";
 import AdminProfile from "../pages/AdminProfile";
 import WithdrawRequestManagement from "../pages/WithdrawRequestManagement";
+import ChatManagement from "../pages/ChatManagement";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
@@ -84,6 +85,7 @@ const routes = [
       // Quản lý hoàn hàng và rút tiền
       { path: "return-requests", element: <ReturnRequestList /> },
       { path: "withdraw-requests", element: <WithdrawRequestManagement /> },
+      { path: "chat", element: <ChatManagement /> },
       
       // Quản lý bình luận và đánh giá
       { path: "comments", element: <CommentManagement /> },
