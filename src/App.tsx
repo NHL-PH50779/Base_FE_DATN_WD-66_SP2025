@@ -1,22 +1,19 @@
-import { useEffect } from 'react'
-import { useCountStore } from './stores/common.store';
-import { RouterProvider } from 'react-router-dom';
-import { router } from './routes';
-import './App.css'
+import React, { useEffect } from 'react';
+import AppRoutes from './router';
+import { autoCompleteService } from './services/order.service';
 
-function App() {
-  const { count: countFromStore } = useCountStore();
-
-
+const App: React.FC = () => {
   useEffect(() => {
+    // Khởi động auto complete service
+    autoCompleteService.start();
+    
+    // Cleanup khi component unmount
+    return () => {
+      autoCompleteService.stop();
+    };
+  }, []);
+  
+  return <AppRoutes />;
+};
 
-  }, [])
-
-  return (
-    <>
-      <RouterProvider router={router} />
-    </>
-  )
-}
-
-export default App
+export default App;

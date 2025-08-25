@@ -1,0 +1,168 @@
+import { productApi } from "../api/product.api";
+import type { Product } from "../types/product.type";
+
+// Helper function để parse response
+const parseResponse = (response: any) => {
+  let data;
+  if (typeof response.data === 'string') {
+    // Loại bỏ phần bootstrap comment và Git conflict markers
+    const jsonString = response.data
+      .replace(/^\/\/ bootstrap\/app\.php\n/, '')
+      .replace(/<<<<<<< HEAD\n/g, '')
+      .replace(/=======\n/g, '')
+      .replace(/>>>>>>> [^\n]+\n/g, '');
+    data = JSON.parse(jsonString);
+  } else {
+    data = response.data;
+  }
+  return Array.isArray(data) ? data : (data.data || data);
+};
+
+export const getAllProducts = async (useCache = false) => {
+  try {
+    // Force fresh data, no cache for now
+    const response = await productApi.getAll();
+    const data = parseResponse(response);
+    const result = Array.isArray(data) ? data : [];
+    
+    console.log('Fresh products data:', result.length, 'items');
+    return { data: result };
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    return { data: [] };
+  }
+};
+
+export const getProductById = async (id: number) => {
+  try {
+    const response = await productApi.getById(id);
+    const data = parseResponse(response);
+    return { data };
+  } catch (error) {
+    console.error(`Error fetching product with id ${id}:`, error);
+    throw error;
+  }
+};
+
+export const createProduct = async (data: FormData | Partial<Product>) => {
+  try {
+    const response = await productApi.create(data);
+    // Clear cache after creating
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('products_cache');
+      localStorage.removeItem('brands_cache');
+      localStorage.removeItem('categories_cache');
+    }
+    return parseResponse(response);
+  } catch (error) {
+    console.error("Error creating product:", error);
+    throw error;
+  }
+};
+
+export const updateProduct = async (id: number, data: FormData | Partial<Product>) => {
+  try {
+    console.log('Updating product service:', id, data);
+    const response = await productApi.update(id, data);
+    
+    // Clear all cache after update
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('products_cache');
+      localStorage.removeItem('brands_cache');
+      localStorage.removeItem('categories_cache');
+    }
+    
+    console.log('Update service response:', response.data);
+    return parseResponse(response);
+  } catch (error) {
+    console.error(`Error updating product with id ${id}:`, error);
+    throw error;
+  }
+};
+
+export const deleteProduct = async (id: number) => {
+  try {
+    const response = await productApi.delete(id);
+    return parseResponse(response);
+  } catch (error) {
+    console.error(`Error deleting product with id ${id}:`, error);
+    throw error;
+  }
+};
+
+export const restoreProduct = async (id: number) => {
+  try {
+    const response = await productApi.restore(id);
+    return parseResponse(response);
+  } catch (error) {
+    console.error(`Error restoring product with id ${id}:`, error);
+    throw error;
+  }
+};
+
+export const forceDeleteProduct = async (id: number) => {
+  try {
+    const response = await productApi.forceDelete(id);
+    return parseResponse(response);
+  } catch (error) {
+    console.error(`Error force deleting product with id ${id}:`, error);
+    throw error;
+  }
+};
+
+export const searchProducts = async (keyword: string) => {
+  try {
+    const response = await productApi.search(keyword);
+    const data = parseResponse(response);
+    return { data: Array.isArray(data) ? data : [] };
+  } catch (error) {
+    console.error(`Error searching products with keyword "${keyword}":`, error);
+    return { data: [] };
+  }
+};
+
+
+
+export const toggleActiveProduct = async (id: number) => {
+  try {
+    const response = await productApi.toggleActive(id);
+    return parseResponse(response);
+  } catch (error) {
+    console.error(`Error toggling active status for product with id ${id}:`, error);
+    throw error;
+  }
+};
+
+export const getProductsByBrand = async (brandId: number) => {
+  try {
+    const response = await productApi.getByBrand(brandId);
+    const data = parseResponse(response);
+    return { data: Array.isArray(data) ? data : [] };
+  } catch (error) {
+    console.error(`Error fetching products by brand ${brandId}:`, error);
+    return { data: [] };
+  }
+};
+
+export const getProductsByCategory = async (categoryId: number) => {
+  try {
+    const response = await productApi.getByCategory(categoryId);
+    const data = parseResponse(response);
+    return { data: Array.isArray(data) ? data : [] };
+  } catch (error) {
+    console.error(`Error fetching products by category ${categoryId}:`, error);
+    return { data: [] };
+  }
+};
+
+export const getTrashedProducts = async () => {
+  try {
+    const response = await productApi.getTrashed();
+    console.log('Raw API response:', response);
+    // Trả về response trực tiếp, không parse
+    return response;
+  } catch (error) {
+    console.error("Error fetching trashed products:", error);
+    return { data: [] };
+  }
+};
