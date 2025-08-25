@@ -18,11 +18,15 @@ const parseResponse = (response: any) => {
   return Array.isArray(data) ? data : (data.data || data);
 };
 
-export const getAllProducts = async () => {
+export const getAllProducts = async (useCache = false) => {
   try {
+    // Force fresh data, no cache for now
     const response = await productApi.getAll();
     const data = parseResponse(response);
-    return { data: Array.isArray(data) ? data : [] };
+    const result = Array.isArray(data) ? data : [];
+    
+    console.log('Fresh products data:', result.length, 'items');
+    return { data: result };
   } catch (error) {
     console.error("Error fetching products:", error);
     return { data: [] };
@@ -43,6 +47,12 @@ export const getProductById = async (id: number) => {
 export const createProduct = async (data: FormData | Partial<Product>) => {
   try {
     const response = await productApi.create(data);
+    // Clear cache after creating
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('products_cache');
+      localStorage.removeItem('brands_cache');
+      localStorage.removeItem('categories_cache');
+    }
     return parseResponse(response);
   } catch (error) {
     console.error("Error creating product:", error);
@@ -52,7 +62,17 @@ export const createProduct = async (data: FormData | Partial<Product>) => {
 
 export const updateProduct = async (id: number, data: FormData | Partial<Product>) => {
   try {
+    console.log('Updating product service:', id, data);
     const response = await productApi.update(id, data);
+    
+    // Clear all cache after update
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('products_cache');
+      localStorage.removeItem('brands_cache');
+      localStorage.removeItem('categories_cache');
+    }
+    
+    console.log('Update service response:', response.data);
     return parseResponse(response);
   } catch (error) {
     console.error(`Error updating product with id ${id}:`, error);

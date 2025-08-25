@@ -3,12 +3,15 @@ import type { Laptop } from "../types/laptop.type";
 
 const API_URL = "http://localhost:8000/api";
 
-export const getAllLaptops = () => {
+export const getAllLaptops = (page = 1, perPage = 15) => {
   const token = localStorage.getItem('token');
-  return axios.get(`${API_URL}/admin/products`, {
+  return axios.get(`${API_URL}/admin/products?page=${page}&per_page=${perPage}&t=${Date.now()}`, {
     headers: {
-      'Authorization': `Bearer ${token}`
-    }
+      'Authorization': `Bearer ${token}`,
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    },
+    timeout: 10000
   });
 };
 
@@ -21,24 +24,52 @@ export const searchLaptops = (keyword: string) => {
 };
 
 export const createLaptop = (data: Partial<Laptop>) => {
-  return axios.post(`${API_URL}/admin/products`, data);
+  const token = localStorage.getItem('token');
+  console.log('Creating product:', data);
+  
+  return axios.post(`${API_URL}/admin/products`, data, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    timeout: 15000
+  });
 };
 
 export const updateLaptop = (id: number, data: Partial<Laptop>) => {
-  return axios.put(`${API_URL}/admin/products/${id}`, data);
+  const token = localStorage.getItem('token');
+  console.log('Updating product:', id, data);
+  
+  return axios.put(`${API_URL}/admin/products/${id}`, data, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    timeout: 10000
+  });
 };
 
 export const deleteLaptop = (id: number) => {
-  return axios.delete(`${API_URL}/admin/products/${id}`);
+  const token = localStorage.getItem('token');
+  console.log('Deleting product with token:', token ? 'Present' : 'Missing');
+  
+  return axios.delete(`${API_URL}/admin/products/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    timeout: 10000
+  });
 };
 
 export const getTrashedLaptops = () => {
   const token = localStorage.getItem('token');
-  console.log('Token for trashed:', token);
   return axios.get(`${API_URL}/admin/products/trashed`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      'Authorization': `Bearer ${token}`
     }
   });
 };
@@ -58,6 +89,15 @@ export const toggleActiveLaptop = (id: number) => {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
+    }
+  });
+};
+
+export const forceDeleteLaptop = (id: number) => {
+  const token = localStorage.getItem('token');
+  return axios.delete(`${API_URL}/admin/products/force-delete/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
     }
   });
 };

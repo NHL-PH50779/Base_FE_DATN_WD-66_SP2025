@@ -13,13 +13,13 @@ import AdminRegister from "../pages/AdminRegister";
 import ReturnRequestList from "../pages/ReturnRequestList";
 import CommentManagement from "../pages/CommentManagement";
 import ReviewManagement from "../pages/ReviewManagement";
-import VoucherList from "../pages/VoucherList";
+import VoucherManagement from "../pages/VoucherManagement";
 import ProductDetail from "../pages/ProductDetail";
-import FlashSaleManagement from "../pages/FlashSaleManagement";
+// FlashSaleManagement removed
 import TrashedProducts from "../pages/TrashedProducts";
 import AdminProfile from "../pages/AdminProfile";
 import WithdrawRequestManagement from "../pages/WithdrawRequestManagement";
-import ChatManagement from "../pages/ChatManagement";
+import ChatAdmin from "../pages/ChatAdmin";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
@@ -85,17 +85,16 @@ const routes = [
       // Quản lý hoàn hàng và rút tiền
       { path: "return-requests", element: <ReturnRequestList /> },
       { path: "withdraw-requests", element: <WithdrawRequestManagement /> },
-      { path: "chat", element: <ChatManagement /> },
+      { path: "chat", element: <ChatAdmin /> },
       
       // Quản lý bình luận và đánh giá
       { path: "comments", element: <CommentManagement /> },
       { path: "reviews", element: <ReviewManagement /> },
       
       // Quản lý voucher
-      { path: "vouchers", element: <VoucherList /> },
+      { path: "vouchers", element: <VoucherManagement /> },
       
-      // Quản lý Flash Sale
-      { path: "flash-sales", element: <FlashSaleManagement /> },
+      // Flash Sale management removed
       
       // Thông tin tài khoản
       { path: "profile", element: <AdminProfile /> },

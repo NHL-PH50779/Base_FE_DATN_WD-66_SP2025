@@ -81,9 +81,20 @@ const CategoryList = () => {
       setModalVisible(false);
       fetchCategories();
     } catch (error: any) {
-      const errorMsg = error.message.includes('timeout') || error.message.includes('chậm')
-        ? 'Kết nối chậm - Vui lòng thử lại'
-        : error.response?.data?.message || 'Có lỗi xảy ra';
+      console.log('Error caught:', error);
+      console.log('Error response:', error.response?.data);
+      
+      let errorMsg = 'Có lỗi xảy ra';
+      
+      if (error.message.includes('timeout') || error.message.includes('chậm')) {
+        errorMsg = 'Kết nối chậm - Vui lòng thử lại';
+      } else if (error.response?.data?.errors?.name) {
+        errorMsg = 'Tên danh mục đã tồn tại, vui lòng chọn tên khác';
+      } else if (error.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      }
+      
+      console.log('Final error message:', errorMsg);
       message.error(errorMsg);
     }
   };

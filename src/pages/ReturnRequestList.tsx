@@ -87,9 +87,8 @@ const ReturnRequestList: React.FC = () => {
         // Xử lý yêu cầu hủy đơn
         const orderId = String(id).replace('cancel_', '');
         if (status === 'approved') {
-          await axiosInstance.put(`/admin/orders/${orderId}/order-status`, {
-            order_status_id: 6 // Trạng thái đã hủy
-          }, {
+          // Gọi API approveCancel để xử lý hoàn tiền tự động
+          await axiosInstance.post(`/admin/orders/${orderId}/approve-cancel`, {}, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
@@ -98,14 +97,14 @@ const ReturnRequestList: React.FC = () => {
           clientNotifications.push({
             id: Date.now(),
             type: 'order_cancelled',
-            message: `Đơn hàng #${orderId} đã được hủy bởi quản trị viên`,
+            message: `Đơn hàng #${orderId} đã được hủy và hoàn tiền vào ví`,
             order_id: orderId,
             created_at: new Date().toISOString(),
             read: false
           });
           localStorage.setItem('client_notifications', JSON.stringify(clientNotifications));
           
-          message.success('Đã chấp nhận hủy đơn hàng và thông báo cho khách hàng');
+          message.success('Đã chấp nhận hủy đơn hàng và hoàn tiền vào ví');
           
           // Cập nhật trạng thái trong danh sách
           setReturnRequests(prev => 
@@ -126,22 +125,19 @@ const ReturnRequestList: React.FC = () => {
         }
       } else {
         // Xử lý yêu cầu hoàn hàng thông thường
-        const request = returnRequests.find(req => req.id === id);
-        if (request) {
-          // Cập nhật trạng thái đơn hàng trực tiếp
-          if (status === 'approved') {
-            await axiosInstance.put(`/admin/orders/${request.order_id}/order-status`, {
-              order_status_id: 8
-            }, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            await axiosInstance.put(`/admin/orders/${request.order_id}/payment-status`, {
-              payment_status_id: 3
-            }, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-          }
+        if (status === 'approved') {
+          // Gọi API approve return request - sẽ tự động hoàn tiền
+          await axiosInstance.post(`/admin/return-requests/${id}/approve`, {}, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        } else {
+          // Từ chối hoàn hàng
+          await axiosInstance.post(`/admin/return-requests/${id}/reject`, {
+            admin_note: 'Admin từ chối yêu cầu hoàn hàng'
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        }
           
           message.success(`Đã ${status === 'approved' ? 'chấp nhận hoàn hàng và hoàn tiền' : 'từ chối hoàn hàng'}`);
           
@@ -158,7 +154,6 @@ const ReturnRequestList: React.FC = () => {
             })
           );
         }
-      }
       
       // Force refresh sau 500ms để đảm bảo đồng bộ với backend
       setTimeout(() => {

@@ -13,7 +13,9 @@ import {
   Tag,
   Space,
   Typography,
-  Card
+  Card,
+  Row,
+  Col
 } from 'antd';
 import {
   PlusOutlined,
@@ -35,7 +37,7 @@ interface Voucher {
   type: 'fixed' | 'percent';
   value: number;
   min_order_amount: number;
-  max_discount_amount: number;
+  max_discount_amount?: number;
   quantity: number;
   used_count: number;
   start_date: string;
@@ -43,7 +45,7 @@ interface Voucher {
   is_active: boolean;
 }
 
-const VoucherList = () => {
+const VoucherManagement = () => {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -58,26 +60,13 @@ const VoucherList = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      // Thử cả 2 endpoint
-      let response;
-      try {
-        response = await axiosInstance.get(`/admin/vouchers?t=${Date.now()}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-      } catch {
-        response = await axiosInstance.get(`/vouchers?t=${Date.now()}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-      }
-      console.log('Vouchers API response:', response.data);
-      const vouchersData = response.data.data || response.data || [];
-      console.log('Vouchers data:', vouchersData);
-      setVouchers(vouchersData);
+      const response = await axiosInstance.get('/admin/vouchers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setVouchers(response.data.data || []);
     } catch (error) {
-      console.error('Voucher API error:', error);
-      // Hiện thị empty state thay vì lỗi
-      setVouchers([]);
-      message.warning('Chức năng voucher chưa sẵn sàng');
+      console.error('Error fetching vouchers:', error);
+      message.error('Lỗi khi tải danh sách voucher');
     } finally {
       setLoading(false);
     }
@@ -85,91 +74,57 @@ const VoucherList = () => {
 
   const handleSubmit = async (values: any) => {
     try {
-      console.log('Raw form values:', values);
-      
+      const token = localStorage.getItem('token');
       const data = {
-        ...values,
+        code: values.code,
+        name: values.name,
+        description: values.description || '',
+        type: values.type,
+        value: Number(values.value),
+        min_order_amount: Number(values.min_order_amount || 0),
+        max_discount_amount: values.max_discount_amount ? Number(values.max_discount_amount) : null,
+        quantity: Number(values.quantity),
         start_date: values.dateRange[0].format('YYYY-MM-DD HH:mm:ss'),
         end_date: values.dateRange[1].format('YYYY-MM-DD HH:mm:ss'),
-        value: typeof values.value === 'string' ? parseFloat(values.value) : Number(values.value), // Đảm bảo convert thành số
-        min_order_amount: Number(values.min_order_amount),
-        quantity: Number(values.quantity),
-        max_discount_amount: values.max_discount_amount ? Number(values.max_discount_amount) : null
+        is_active: values.is_active
       };
-      delete data.dateRange;
 
-      const token = localStorage.getItem('token');
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      };
-      
-      console.log('Submitting voucher data:', data);
-      console.log('Form values before submit:', values);
-      console.log('Data after processing:', {
-        ...data,
-        value: Number(data.value),
-        min_order_amount: Number(data.min_order_amount),
-        quantity: Number(data.quantity)
-      });
-      
       if (editingVoucher) {
-        console.log('Updating voucher ID:', editingVoucher.id);
-        console.log('API URL:', `/admin/vouchers/${editingVoucher.id}`);
-        console.log('Request data:', JSON.stringify(data, null, 2));
-        console.log('Request config:', config);
-        
-        const response = await axiosInstance.put(`/admin/vouchers/${editingVoucher.id}`, data, config);
-        console.log('Update response status:', response.status);
-        console.log('Update response data:', response.data);
-        
-        // Fetch lại dữ liệu từ server để đảm bảo chính xác
-        await fetchVouchers();
-        
+        await axiosInstance.put(`/admin/vouchers/${editingVoucher.id}`, data, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         message.success('Cập nhật voucher thành công');
       } else {
-        const response = await axiosInstance.post('/admin/vouchers', data, config);
-        console.log('Create response:', response.data);
-        
-        // Fetch lại dữ liệu từ server
-        await fetchVouchers();
-        
+        await axiosInstance.post('/admin/vouchers', data, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         message.success('Tạo voucher thành công');
       }
 
       setModalVisible(false);
       setEditingVoucher(null);
       form.resetFields();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      fetchVouchers();
     } catch (error: any) {
-      console.error('API Error:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      message.error(error.response?.data?.message || 'Có lỗi xảy ra: ' + error.message);
+      console.error('Error saving voucher:', error);
+      message.error(error.response?.data?.message || 'Có lỗi xảy ra');
     }
   };
 
   const handleEdit = (voucher: Voucher) => {
     setEditingVoucher(voucher);
-    
-    // Đảm bảo hiển thị đúng giá trị hiện tại
-    const formData = {
+    form.setFieldsValue({
       code: voucher.code,
       name: voucher.name,
       description: voucher.description,
       type: voucher.type,
-      value: typeof voucher.value === 'string' ? parseFloat(voucher.value) : Number(voucher.value), // Đảm bảo là số
-      min_order_amount: Number(voucher.min_order_amount),
-      max_discount_amount: voucher.max_discount_amount ? Number(voucher.max_discount_amount) : undefined,
-      quantity: Number(voucher.quantity),
+      value: voucher.value,
+      min_order_amount: voucher.min_order_amount,
+      max_discount_amount: voucher.max_discount_amount,
+      quantity: voucher.quantity,
       is_active: voucher.is_active,
       dateRange: [dayjs(voucher.start_date), dayjs(voucher.end_date)]
-    };
-    
-    console.log('Setting form values for edit:', formData);
-    form.setFieldsValue(formData);
+    });
     setModalVisible(true);
   };
 
@@ -177,16 +132,19 @@ const VoucherList = () => {
     try {
       const token = localStorage.getItem('token');
       await axiosInstance.delete(`/admin/vouchers/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       message.success('Xóa voucher thành công');
-      await fetchVouchers();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      fetchVouchers();
     } catch (error) {
       message.error('Lỗi khi xóa voucher');
     }
+  };
+
+  const openCreateModal = () => {
+    setEditingVoucher(null);
+    form.resetFields();
+    setModalVisible(true);
   };
 
   const columns = [
@@ -215,13 +173,12 @@ const VoucherList = () => {
       title: 'Giá trị',
       dataIndex: 'value',
       key: 'value',
-      render: (value: number | string, record: Voucher) => {
-        console.log('Rendering voucher value:', { code: record.code, type: record.type, value, valueType: typeof value });
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+      render: (value: number, record: Voucher) => {
+        const numValue = Math.round(Number(value));
         if (record.type === 'fixed') {
-          return `${Math.round(numValue).toLocaleString('vi-VN')}đ`;
+          return `${numValue.toLocaleString('vi-VN')}đ`;
         } else {
-          return `${Math.round(numValue)}%`;
+          return `${numValue}%`;
         }
       }
     },
@@ -229,12 +186,18 @@ const VoucherList = () => {
       title: 'Đơn tối thiểu',
       dataIndex: 'min_order_amount',
       key: 'min_order_amount',
-      render: (amount: number) => `${Math.round(amount).toLocaleString('vi-VN')}đ`
+      render: (amount: number) => `${Math.round(Number(amount)).toLocaleString('vi-VN')}đ`
     },
     {
       title: 'Số lượng',
       key: 'quantity',
       render: (record: Voucher) => `${record.used_count}/${record.quantity}`
+    },
+    {
+      title: 'Giảm tối đa',
+      dataIndex: 'max_discount_amount',
+      key: 'max_discount_amount',
+      render: (amount: number) => amount ? `${Math.round(Number(amount)).toLocaleString('vi-VN')}đ` : 'Không giới hạn'
     },
     {
       title: 'Thời gian',
@@ -280,22 +243,22 @@ const VoucherList = () => {
   return (
     <div>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Title level={2}>
-            <GiftOutlined /> Quản lý Voucher
-          </Title>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setEditingVoucher(null);
-              form.resetFields();
-              setModalVisible(true);
-            }}
-          >
-            Thêm voucher
-          </Button>
-        </div>
+        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+          <Col>
+            <Title level={2}>
+              <GiftOutlined /> Quản lý Voucher
+            </Title>
+          </Col>
+          <Col>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={openCreateModal}
+            >
+              Thêm voucher
+            </Button>
+          </Col>
+        </Row>
 
         <Table
           columns={columns}
@@ -352,106 +315,100 @@ const VoucherList = () => {
             <Input.TextArea rows={2} placeholder="Mô tả voucher" />
           </Form.Item>
 
+          {/* 1. Loại voucher: Giảm cố định hoặc Giảm % */}
           <Form.Item
             name="type"
-            label="Loại giảm giá"
-            rules={[{ required: true }]}
+            label="Loại voucher"
+            rules={[{ required: true, message: 'Vui lòng chọn loại voucher' }]}
           >
-            <Select onChange={(value) => {
-              // Chỉ reset giá trị khi tạo mới, không reset khi edit
-              if (!editingVoucher) {
-                if (value === 'percent') {
-                  form.setFieldsValue({ value: 10 }); // Mặc định 10%
-                } else {
-                  form.setFieldsValue({ value: 50000 }); // Mặc định 50.000đ
-                }
-              }
-            }}>
-              <Select.Option value="fixed">Giảm cố định</Select.Option>
-              <Select.Option value="percent">Giảm phần trăm</Select.Option>
+            <Select placeholder="Chọn loại voucher">
+              <Select.Option value="fixed">💰 Giảm cố định (VND)</Select.Option>
+              <Select.Option value="percent">📊 Giảm phần trăm (%)</Select.Option>
             </Select>
           </Form.Item>
 
-          <Form.Item
-            name="value"
-            label="Giá trị giảm"
-            rules={[{ required: !editingVoucher, message: 'Vui lòng nhập giá trị' }]}
-          >
-            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.type !== curr.type}>
-              {({ getFieldValue }) => {
-                const type = getFieldValue('type');
-                return (
+          {/* 2. Giá trị giảm */}
+          <Form.Item noStyle shouldUpdate={(prev, curr) => prev.type !== curr.type}>
+            {({ getFieldValue }) => {
+              const type = getFieldValue('type');
+              return (
+                <Form.Item
+                  name="value"
+                  label="Giá trị giảm"
+                  rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm' }]}
+                >
                   <InputNumber
-                    min={0}
+                    min={1}
                     max={type === 'percent' ? 100 : undefined}
                     style={{ width: '100%' }}
-                    formatter={(value) => {
-                      if (!value) return '';
-                      return type === 'percent' ? `${value}%` : `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                    }}
-                    parser={(value) => {
-                      if (!value) return 0;
-                      // Chỉ xóa ký tự không phải số và dấu chấm
-                      const parsed = value.replace(/[^\d.]/g, '');
-                      return parsed ? Number(parsed) : 0;
-                    }}
-                    placeholder={type === 'percent' ? 'VD: 10, 20, 50' : 'VD: 50000, 100000'}
-                    step={type === 'percent' ? 1 : 1000}
+                    placeholder={type === 'percent' ? 'Nhập % giảm (1-100)' : 'Nhập số tiền giảm'}
+                    addonAfter={type === 'percent' ? '%' : 'VND'}
                   />
-                );
-              }}
-            </Form.Item>
+                </Form.Item>
+              );
+            }}
           </Form.Item>
 
+          {/* 3. Giá trị đơn hàng tối thiểu */}
           <Form.Item
             name="min_order_amount"
             label="Giá trị đơn hàng tối thiểu"
-            rules={[{ required: true }]}
+            rules={[{ required: true, message: 'Vui lòng nhập giá trị đơn hàng tối thiểu' }]}
           >
             <InputNumber
               min={0}
               style={{ width: '100%' }}
-              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value) => value!.replace(/\D/g, '')}
+              placeholder="Đơn hàng tối thiểu để áp dụng voucher"
+              addonAfter="VND"
             />
           </Form.Item>
 
+          {/* 4. Giá trị giảm tối đa (cho voucher %) */}
           <Form.Item
             name="max_discount_amount"
-            label="Giá trị giảm tối đa (chỉ cho giảm %)"
+            label="Giá trị giảm tối đa"
+            tooltip="Chỉ áp dụng cho voucher giảm %. Để trống nếu không giới hạn."
           >
             <InputNumber
               min={0}
               style={{ width: '100%' }}
-              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value) => value!.replace(/\D/g, '')}
+              placeholder="Số tiền giảm tối đa (tùy chọn)"
+              addonAfter="VND"
             />
           </Form.Item>
 
+          {/* 5. Số lượng voucher */}
           <Form.Item
             name="quantity"
-            label="Số lượng"
-            rules={[{ required: true }]}
+            label="Số lượng voucher"
+            rules={[{ required: true, message: 'Vui lòng nhập số lượng voucher' }]}
           >
-            <InputNumber min={1} style={{ width: '100%' }} />
+            <InputNumber 
+              min={1} 
+              style={{ width: '100%' }} 
+              placeholder="Số lượng voucher có thể sử dụng"
+            />
           </Form.Item>
 
+          {/* 6. Ngày bắt đầu và kết thúc */}
           <Form.Item
             name="dateRange"
             label="Thời gian hiệu lực"
-            rules={[{ required: true, message: 'Vui lòng chọn thời gian' }]}
+            rules={[{ required: true, message: 'Vui lòng chọn thời gian hiệu lực' }]}
           >
             <RangePicker
               showTime
               style={{ width: '100%' }}
               format="DD/MM/YYYY HH:mm"
+              placeholder={['Ngày bắt đầu', 'Ngày kết thúc']}
             />
           </Form.Item>
 
-          <Form.Item name="is_active" label="Trạng thái">
+          {/* 7. Trạng thái voucher */}
+          <Form.Item name="is_active" label="Trạng thái voucher">
             <Select>
-              <Select.Option value={true}>Hoạt động</Select.Option>
-              <Select.Option value={false}>Tạm dừng</Select.Option>
+              <Select.Option value={true}>✅ Hoạt động</Select.Option>
+              <Select.Option value={false}>⏸️ Tạm dừng</Select.Option>
             </Select>
           </Form.Item>
 
@@ -471,4 +428,4 @@ const VoucherList = () => {
   );
 };
 
-export default VoucherList;
+export default VoucherManagement;

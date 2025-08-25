@@ -1,15 +1,18 @@
 import React from "react";
-import { Card, Col, Row, Statistic, List, Badge, Typography } from "antd";
-import { axiosInstance } from "../utils/axios.util";
+import { Card, Col, Row, Statistic, List, Badge, Typography, Button, Table, Progress } from "antd";
+import { useNavigate } from "react-router-dom";
 import { dashboardService } from '../services/dashboard.service';
-import CommentReviewStats from '../components/dashboard/CommentReviewStats';
-import DashboardFilters from '../components/dashboard/DashboardFilters';
 import {
   LaptopOutlined,
   ShoppingCartOutlined,
   UserOutlined,
   DollarOutlined,
   ExclamationCircleOutlined,
+  TrophyOutlined,
+  WarningOutlined,
+  EyeOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
 } from "@ant-design/icons";
 import {
   BarChart,
@@ -22,335 +25,433 @@ import {
   Pie,
   Cell,
   Legend,
+  LineChart,
+  Line,
+  Area,
+  AreaChart,
 } from "recharts";
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
 const Dashboard: React.FC = () => {
-  const [stats, setStats] = React.useState({
-    laptops: 0,
-    orders: 0,
-    users: 0,
-    revenue: 0,
-    categories: 0,
-    ordersByStatus: [] as Array<{status_id: number, status_name: string, count: number}>,
-    thisMonth: { orders: 0, revenue: 0 }
-  });
+  const navigate = useNavigate();
+  const [dashboardData, setDashboardData] = React.useState<any>({});
   const [loading, setLoading] = React.useState(false);
-  
-  // Filter states
-  const [dateRange, setDateRange] = React.useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
-  const [timeFilter, setTimeFilter] = React.useState<string>('all');
-  const [statusFilter, setStatusFilter] = React.useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
+  const [period, setPeriod] = React.useState('30days');
 
   React.useEffect(() => {
-    fetchStats();
-    // Auto refresh mỗi 10 giây
-    const interval = setInterval(fetchStats, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchDashboardData();
+  }, [period]);
 
-  const fetchStats = async () => {
+  const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const response = await dashboardService.getStats();
-      const data = response.data;
-      
-      setStats({
-        laptops: data.totals?.products || 0,
-        orders: data.totals?.orders || 0,
-        users: data.totals?.users || 0,
-        revenue: data.totals?.revenue || 0,
-        categories: data.totals?.categories || 0,
-        ordersByStatus: data.orders_by_status || [],
-        thisMonth: data.this_month || { orders: 0, revenue: 0 }
-      });
-      
-      // Cập nhật doanh thu theo tháng từ API
-      if (data.monthly_revenue) {
-        setRevenueData(data.monthly_revenue);
-      }
+      const response = await dashboardService.getStats({ period });
+      console.log('Dashboard data received:', response.data);
+      setDashboardData(response.data);
     } catch (error) {
-      console.error('Error fetching stats:', error);
-      setStats({
-        laptops: 0,
-        orders: 0,
-        users: 0,
-        revenue: 0,
-        categories: 0,
-        ordersByStatus: [],
-        thisMonth: { orders: 0, revenue: 0 }
-      });
+      console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const [revenueData, setRevenueData] = React.useState([
-    { month: "Jan", revenue: 0 },
-    { month: "Feb", revenue: 0 },
-    { month: "Mar", revenue: 0 },
-    { month: "Apr", revenue: 0 },
-    { month: "May", revenue: 0 },
-    { month: "Jun", revenue: 0 },
-    { month: "Jul", revenue: 0 },
-    { month: "Aug", revenue: 0 },
-    { month: "Sep", revenue: 0 },
-    { month: "Oct", revenue: 0 },
-    { month: "Nov", revenue: 0 },
-    { month: "Dec", revenue: 0 },
-  ]);
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('vi-VN', { 
+      style: 'currency', 
+      currency: 'VND' 
+    }).format(value);
+  };
 
-  const bestSellers = [
-    { name: "Laptop Dell XPS 13", sold: 30 },
-    { name: "MacBook Air M2", sold: 25 },
-    { name: "HP Envy 15", sold: 20 },
-  ];
+  const COLORS = ["#1890ff", "#52c41a", "#faad14", "#f5222d", "#722ed1", "#13c2c2"];
 
-  const notifications = [
+  const topProductColumns = [
     {
-      type: "order",
-      content: "Có 2 đơn hàng mới chờ xử lý.",
+      title: 'Sản phẩm',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text: string, record: any) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img 
+            src={record.thumbnail || '/placeholder.jpg'} 
+            alt={text}
+            style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }}
+          />
+          <span 
+            style={{ cursor: 'pointer', color: '#1890ff' }}
+            onClick={() => navigate(`/admin/products/detail/${record.id}`)}
+          >
+            {text}
+          </span>
+        </div>
+      ),
     },
     {
-      type: "stock",
-      content: "Laptop HP Envy 15 sắp hết hàng (còn 2 chiếc).",
+      title: 'Đã bán',
+      dataIndex: 'total_sold',
+      key: 'total_sold',
+      sorter: (a: any, b: any) => a.total_sold - b.total_sold,
+    },
+    {
+      title: 'Doanh thu',
+      dataIndex: 'total_revenue',
+      key: 'total_revenue',
+      render: (value: number) => formatCurrency(value),
+      sorter: (a: any, b: any) => a.total_revenue - b.total_revenue,
+    },
+    {
+      title: 'Thao tác',
+      key: 'action',
+      render: (record: any) => (
+        <Button 
+          type="link" 
+          icon={<EyeOutlined />}
+          onClick={() => navigate(`/admin/products/detail/${record.id}`)}
+        >
+          Xem
+        </Button>
+      ),
     },
   ];
 
-  const COLORS = ["#1890ff", "#52c41a", "#faad14"];
-
-  const getStatusColor = (statusId: number) => {
-    const colors = {
-      1: '#faad14', // Chờ xác nhận
-      2: '#1890ff', // Đã xác nhận
-      3: '#13c2c2', // Đang giao
-      4: '#52c41a', // Đã giao
-      5: '#f5222d'  // Đã hủy
-    };
-    return colors[statusId as keyof typeof colors] || '#faad14';
-  };
-
-  const handleFilterChange = () => {
-    fetchStats();
-  };
-
-  const resetFilters = () => {
-    setDateRange(null);
-    setTimeFilter('all');
-    setStatusFilter('all');
-    setCategoryFilter('all');
-    fetchStats();
-  };
+  const lowStockColumns = [
+    {
+      title: 'Sản phẩm',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text: string, record: any) => (
+        <div>
+          <div 
+            style={{ cursor: 'pointer', color: '#1890ff', fontWeight: 500 }}
+            onClick={() => navigate(`/admin/products/detail/${record.id}`)}
+          >
+            {text}
+          </div>
+          <small style={{ color: '#666' }}>{record.variant_name}</small>
+        </div>
+      ),
+    },
+    {
+      title: 'Tồn kho',
+      dataIndex: 'stock',
+      key: 'stock',
+      render: (stock: number) => (
+        <Badge 
+          count={stock} 
+          style={{ 
+            backgroundColor: stock <= 5 ? '#f5222d' : stock <= 10 ? '#faad14' : '#52c41a' 
+          }} 
+        />
+      ),
+      sorter: (a: any, b: any) => a.stock - b.stock,
+    },
+  ];
 
   return (
     <div>
-      {/* Bộ lọc Dashboard */}
-      <DashboardFilters
-        timeFilter={timeFilter}
-        setTimeFilter={setTimeFilter}
-        dateRange={dateRange}
-        setDateRange={setDateRange}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        categoryFilter={categoryFilter}
-        setCategoryFilter={setCategoryFilter}
-        onApplyFilters={handleFilterChange}
-        onResetFilters={resetFilters}
-        onRefresh={fetchStats}
-        loading={loading}
-      />
+      {/* Header với bộ lọc thời gian */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
+          📊 Dashboard Quản Trị
+        </Title>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {['7days', '30days', '3months', '6months', '1year'].map(p => (
+            <Button
+              key={p}
+              type={period === p ? 'primary' : 'default'}
+              onClick={() => setPeriod(p)}
+              size="small"
+            >
+              {p === '7days' ? '7 ngày' : 
+               p === '30days' ? '30 ngày' :
+               p === '3months' ? '3 tháng' :
+               p === '6months' ? '6 tháng' : '1 năm'}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       {/* Thống kê tổng quan */}
-      <Title level={3} style={{ color: "#1890ff", marginBottom: 16 }}>📊 Thống kê tổng quan</Title>
-      <Row gutter={16}>
+      <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderTop: "4px solid #1890ff", borderRadius: 8, marginBottom: 16 }}>
+          <Card style={{ borderTop: "4px solid #1890ff", borderRadius: 8 }}>
             <Statistic
-              title="Tổng sản phẩm"
-              value={stats.laptops}
-              prefix={<LaptopOutlined />}
+              title="Tổng đơn hàng"
+              value={dashboardData?.overview?.total_orders || 0}
+              prefix={<ShoppingCartOutlined />}
               loading={loading}
               valueStyle={{ color: '#1890ff' }}
             />
+            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+              {dashboardData?.overview?.completion_rate || 0}% hoàn thành
+            </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderTop: "4px solid #52c41a", borderRadius: 8, marginBottom: 16 }}>
+          <Card style={{ borderTop: "4px solid #52c41a", borderRadius: 8 }}>
             <Statistic
-              title="Tổng đơn hàng"
-              value={stats.orders}
-              prefix={<ShoppingCartOutlined />}
+              title="Doanh thu"
+              value={dashboardData?.overview?.total_revenue || 0}
+              formatter={(value) => formatCurrency(Number(value))}
+              prefix={<DollarOutlined />}
               loading={loading}
               valueStyle={{ color: '#52c41a' }}
             />
+            <div style={{ marginTop: 8, fontSize: 12, display: 'flex', alignItems: 'center' }}>
+              {(dashboardData?.overview?.revenue_growth || 0) >= 0 ? (
+                <ArrowUpOutlined style={{ color: '#52c41a', marginRight: 4 }} />
+              ) : (
+                <ArrowDownOutlined style={{ color: '#f5222d', marginRight: 4 }} />
+              )}
+              {Math.abs(dashboardData?.overview?.revenue_growth || 0)}% so với kỳ trước
+            </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderTop: "4px solid #faad14", borderRadius: 8, marginBottom: 16 }}>
+          <Card style={{ borderTop: "4px solid #faad14", borderRadius: 8 }}>
             <Statistic
-              title="Tổng người dùng"
-              value={stats.users}
-              prefix={<UserOutlined />}
+              title="Sản phẩm"
+              value={dashboardData?.overview?.total_products || 0}
+              prefix={<LaptopOutlined />}
               loading={loading}
               valueStyle={{ color: '#faad14' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderTop: "4px solid #f5222d", borderRadius: 8, marginBottom: 16 }}>
-            <Statistic
-              title="Tổng doanh thu"
-              value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stats.revenue)}
-              prefix={<DollarOutlined />}
-              loading={loading}
-              valueStyle={{ color: '#f5222d' }}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Thống kê theo thời gian */}
-      <Title level={4} style={{ color: "#52c41a", marginTop: 24, marginBottom: 16 }}>📈 Thống kê theo thời gian</Title>
-      <Row gutter={16}>
-        <Col span={8}>
           <Card style={{ borderTop: "4px solid #722ed1", borderRadius: 8 }}>
             <Statistic
-              title="Danh mục sản phẩm"
-              value={stats.categories}
-              prefix={<LaptopOutlined />}
+              title="Khách hàng"
+              value={dashboardData?.overview?.total_users || 0}
+              prefix={<UserOutlined />}
               loading={loading}
+              valueStyle={{ color: '#722ed1' }}
             />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card style={{ borderTop: "4px solid #13c2c2", borderRadius: 8 }}>
-            <Statistic
-              title="Đơn hàng tháng này"
-              value={stats.thisMonth.orders}
-              prefix={<ShoppingCartOutlined />}
-              loading={loading}
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card style={{ borderTop: "4px solid #eb2f96", borderRadius: 8 }}>
-            <Statistic
-              title="Doanh thu tháng này"
-              value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stats.thisMonth.revenue)}
-              prefix={<DollarOutlined />}
-              loading={loading}
-            />
+            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+              +{dashboardData?.overview?.new_users || 0} mới
+            </div>
           </Card>
         </Col>
       </Row>
 
-      {/* Thống kê đơn hàng theo trạng thái */}
-      <Title level={4} style={{ color: "#faad14", marginTop: 24, marginBottom: 16 }}>🛒 Phân tích đơn hàng</Title>
-      <Row gutter={16}>
-        <Col span={24}>
-          <Card title={<span style={{ color: "#1890ff" }}>📋 Thống kê đơn hàng theo trạng thái</span>} style={{ borderRadius: 12 }}>
-            <Row gutter={16}>
-              {stats.ordersByStatus.map((status) => (
-                <Col span={6} key={status.status_id}>
-                  <Card 
-                    size="small" 
-                    style={{ 
-                      textAlign: 'center', 
-                      marginBottom: 8,
-                      borderLeft: `4px solid ${getStatusColor(status.status_id)}`,
-                      borderRadius: 8
-                    }}
-                  >
-                    <Statistic
-                      title={status.status_name}
-                      value={status.count}
-                      valueStyle={{ color: getStatusColor(status.status_id), fontWeight: 'bold' }}
-                    />
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Thống kê bình luận và đánh giá */}
-      <Title level={4} style={{ color: "#722ed1", marginTop: 24, marginBottom: 16 }}>💬 Thống kê tương tác</Title>
-      <Row gutter={16}>
-        <Col span={24}>
-          <CommentReviewStats />
-        </Col>
-      </Row>
-
-      {/* Biểu đồ và thông báo */}
-      <Title level={4} style={{ color: "#f5222d", marginTop: 32, marginBottom: 16 }}>📈 Biểu đồ & Thông báo</Title>
-      <Row gutter={24}>
+      {/* Biểu đồ doanh thu */}
+      <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={16}>
-          <Card
-            title={
-              <span style={{ color: "#1890ff" }}>💰 Doanh thu theo tháng</span>
-            }
-            style={{ marginBottom: 24, borderRadius: 12 }}
-          >
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={revenueData}>
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value) => [new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value)), 'Doanh thu']} />
-                <Bar dataKey="revenue" fill="#1890ff" radius={[4, 4, 0, 0]} />
-              </BarChart>
+          <Card title="📈 Biểu đồ doanh thu" style={{ borderRadius: 8 }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={dashboardData?.revenue_chart || []}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#1890ff" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#1890ff" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="period" />
+                <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
+                <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Doanh thu']} />
+                <Area 
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="#1890ff" 
+                  fillOpacity={1} 
+                  fill="url(#colorRevenue)" 
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </Card>
-          <Card
-            title={
-              <span style={{ color: "#52c41a" }}>🏆 Sản phẩm bán chạy</span>
-            }
-            style={{ borderRadius: 12 }}
-          >
-            <ResponsiveContainer width="100%" height={250}>
+        </Col>
+        <Col span={8}>
+          <Card title="🎯 Tỉ lệ đơn hàng" style={{ borderRadius: 8 }}>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={bestSellers}
-                  dataKey="sold"
-                  nameKey="name"
+                  data={dashboardData?.order_status_ratio || []}
+                  dataKey="count"
+                  nameKey="status_name"
                   cx="50%"
                   cy="50%"
                   outerRadius={80}
-                  label={({name, value}) => `${name}: ${value}`}
+                  label={({percentage}) => `${percentage}%`}
                 >
-                  {bestSellers.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
+                  {(dashboardData?.order_status_ratio || []).map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Legend />
                 <Tooltip />
+                <Legend />
               </PieChart>
             </ResponsiveContainer>
           </Card>
         </Col>
-        <Col span={8}>
-          <Card
+      </Row>
+
+      {/* Top sản phẩm và danh mục */}
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col span={12}>
+          <Card 
             title={
-              <span style={{ color: "#faad14" }}>
-                <ExclamationCircleOutlined /> 🔔 Thông báo quan trọng
+              <span>
+                <TrophyOutlined style={{ color: '#faad14', marginRight: 8 }} />
+                Top sản phẩm bán chạy
               </span>
+            } 
+            style={{ borderRadius: 8 }}
+            extra={
+              <Button type="link" onClick={() => navigate('/admin/products')}>
+                Xem tất cả
+              </Button>
             }
-            style={{ borderRadius: 12, minHeight: 530 }}
+          >
+            <Table
+              dataSource={dashboardData?.top_products || []}
+              columns={topProductColumns}
+              pagination={false}
+              size="small"
+              loading={loading}
+              rowKey="id"
+            />
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card 
+            title="📂 Top danh mục bán chạy" 
+            style={{ borderRadius: 8 }}
+            extra={
+              <Button type="link" onClick={() => navigate('/admin/categories')}>
+                Xem tất cả
+              </Button>
+            }
+          >
+            {(dashboardData?.top_categories || []).map((category: any, index: number) => (
+              <div 
+                key={category.id}
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  padding: '8px 0',
+                  borderBottom: index < (dashboardData?.top_categories?.length - 1) ? '1px solid #f0f0f0' : 'none',
+                  cursor: 'pointer'
+                }}
+                onClick={() => navigate(`/admin/categories/${category.id}`)}
+              >
+                <span style={{ color: '#1890ff' }}>{category.name}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div>{category.total_sold} sản phẩm</div>
+                  <small style={{ color: '#666' }}>{formatCurrency(category.total_revenue)}</small>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Top khách hàng và tồn kho thấp */}
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col span={12}>
+          <Card 
+            title="👑 Top khách hàng VIP" 
+            style={{ borderRadius: 8 }}
+            extra={
+              <Button type="link" onClick={() => navigate('/admin/users')}>
+                Xem tất cả
+              </Button>
+            }
+          >
+            {(dashboardData?.top_customers || []).map((customer: any, index: number) => (
+              <div 
+                key={customer.id}
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  padding: '8px 0',
+                  borderBottom: index < (dashboardData?.top_customers?.length - 1) ? '1px solid #f0f0f0' : 'none',
+                  cursor: 'pointer'
+                }}
+                onClick={() => navigate(`/admin/users/${customer.id}`)}
+              >
+                <div>
+                  <div style={{ color: '#1890ff', fontWeight: 500 }}>{customer.name}</div>
+                  <small style={{ color: '#666' }}>{customer.email}</small>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div>{formatCurrency(customer.total_spent)}</div>
+                  <small style={{ color: '#666' }}>{customer.total_orders} đơn hàng</small>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card 
+            title={
+              <span>
+                <WarningOutlined style={{ color: '#f5222d', marginRight: 8 }} />
+                Sản phẩm tồn kho thấp
+              </span>
+            } 
+            style={{ borderRadius: 8 }}
+            extra={
+              <Button type="link" onClick={() => navigate('/admin/products')}>
+                Xem tất cả
+              </Button>
+            }
+          >
+            <Table
+              dataSource={dashboardData?.low_stock_products || []}
+              columns={lowStockColumns}
+              pagination={false}
+              size="small"
+              loading={loading}
+              rowKey="variant_id"
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Đơn hàng gần đây */}
+      <Row gutter={16}>
+        <Col span={24}>
+          <Card 
+            title="🕒 Đơn hàng chờ xác nhận" 
+            style={{ borderRadius: 8 }}
+            extra={
+              <Button type="primary" onClick={() => navigate('/admin/orders')}>
+                Xử lý đơn hàng
+              </Button>
+            }
           >
             <List
-              dataSource={notifications}
-              renderItem={(item) => (
-                <List.Item style={{ padding: '12px 0' }}>
-                  <Badge
-                    status={item.type === "order" ? "processing" : "error"}
-                    text={item.content}
-                    style={{ fontSize: '14px' }}
+              dataSource={dashboardData?.recent_orders || []}
+              renderItem={(order: any) => (
+                <List.Item
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/admin/orders/${order.id}`)}
+                  actions={[
+                    <Button type="link" key="view">
+                      Xem chi tiết
+                    </Button>
+                  ]}
+                >
+                  <List.Item.Meta
+                    title={
+                      <span>
+                        Đơn hàng #{order.id} - {order.user?.name || 'Khách vãng lai'}
+                      </span>
+                    }
+                    description={
+                      <div>
+                        <div>Tổng tiền: {formatCurrency(order.total)}</div>
+                        <div>Số sản phẩm: {order.items_count}</div>
+                        <div>Thời gian: {dayjs(order.created_at).format('DD/MM/YYYY HH:mm')}</div>
+                      </div>
+                    }
+                  />
+                  <Badge 
+                    status="processing" 
+                    text={order.payment_method === 'cod' ? 'COD' : 'Online'} 
                   />
                 </List.Item>
               )}

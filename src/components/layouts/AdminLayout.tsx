@@ -211,11 +211,7 @@ const AdminLayout = () => {
           icon: <GiftOutlined />,
           label: <Link to="/admin/vouchers">Voucher</Link>,
         },
-        {
-          key: 'flash-sales',
-          icon: <FireOutlined />,
-          label: <Link to="/admin/flash-sales">Flash Sale</Link>,
-        },
+
       ],
     },
     {

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Select, DatePicker, Button, Space, Divider, Typography } from 'antd';
 import { FilterOutlined, ReloadOutlined } from '@ant-design/icons';
+import { axiosInstance } from '../../utils/axios.util';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -36,6 +37,20 @@ const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   onRefresh,
   loading
 }) => {
+  const [categories, setCategories] = useState<Array<{id: number, name: string}>>([]);
+  
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+  
+  const fetchCategories = async () => {
+    try {
+      const response = await axiosInstance.get('/categories');
+      setCategories(response.data.data || response.data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
   return (
     <Card style={{ marginBottom: 24, borderRadius: 12 }}>
       <Row justify="space-between" align="middle">
@@ -126,9 +141,11 @@ const DashboardFilters: React.FC<DashboardFiltersProps> = ({
               size="small"
             >
               <Option value="all">Tất cả</Option>
-              <Option value="laptop">Laptop</Option>
-              <Option value="gaming">Gaming</Option>
-              <Option value="office">Văn phòng</Option>
+              {categories.map(category => (
+                <Option key={category.id} value={category.id.toString()}>
+                  {category.name}
+                </Option>
+              ))}
             </Select>
           </Space>
         </Col>

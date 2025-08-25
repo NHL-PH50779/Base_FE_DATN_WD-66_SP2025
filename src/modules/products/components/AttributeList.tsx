@@ -40,9 +40,13 @@ export default function AttributeList() {
   };
 
   const handleEdit = (attribute: Attribute) => {
+    console.log('handleEdit called with:', attribute);
     setEditingAttribute(attribute);
     form.setFieldsValue({ name: attribute.name });
-    setAttributeValues(attribute.values?.map(v => v.value) || ['']);
+    
+    const existingValues = attribute.values?.map(v => v.value) || [];
+    console.log('Setting attributeValues to:', existingValues);
+    setAttributeValues(existingValues.length > 0 ? existingValues : ['']);
     setModalVisible(true);
   };
 
@@ -87,7 +91,12 @@ export default function AttributeList() {
   };
 
   const handleSubmit = async (values: { name: string }) => {
+    console.log('handleSubmit called with:', values);
+    console.log('editingAttribute:', editingAttribute);
+    console.log('attributeValues state:', attributeValues);
+    
     const validValues = attributeValues.filter(v => v.trim() !== '');
+    console.log('validValues after filter:', validValues);
     
     if (validValues.length === 0) {
       message.error("Vui lòng nhập ít nhất một giá trị thuộc tính");
@@ -102,14 +111,24 @@ export default function AttributeList() {
 
     try {
       if (editingAttribute) {
-        // Update attribute
+        console.log('Updating attribute:', editingAttribute.id, 'with name:', values.name);
+        
+        // Update attribute name
         await updateAttribute(editingAttribute.id!, { name: values.name });
         
-        // Add new values if any
-        const existingValues = editingAttribute.values?.map(v => v.value) || [];
-        const newValues = validValues.filter(v => !existingValues.includes(v));
+        // Xóa tất cả values cũ trước
+        const existingValues = editingAttribute.values || [];
+        console.log('Deleting existing values:', existingValues);
         
-        for (const value of newValues) {
+        for (const existingValue of existingValues) {
+          if (existingValue.id) {
+            await deleteAttributeValue(existingValue.id);
+          }
+        }
+        
+        // Thêm tất cả values mới
+        console.log('Adding new values:', validValues);
+        for (const value of validValues) {
           await createAttributeValue({
             attribute_id: editingAttribute.id!,
             value
@@ -119,17 +138,33 @@ export default function AttributeList() {
         message.success("Cập nhật thuộc tính thành công");
       } else {
         // Create new attribute
+        console.log('Creating attribute with name:', values.name);
         const attributeRes = await createAttribute({ name: values.name });
-        const newAttribute = attributeRes.data;
+        console.log('Attribute creation response:', attributeRes);
+        const newAttribute = attributeRes.data || attributeRes;
+        console.log('New attribute:', newAttribute);
         
         if (newAttribute && newAttribute.id) {
-          // Create attribute values
+          console.log('Creating values for attribute:', newAttribute.id, validValues);
+          
+          // Create attribute values với delay
           for (const value of validValues) {
-            await createAttributeValue({
-              attribute_id: newAttribute.id,
-              value
-            });
+            console.log('Creating value:', value, 'for attribute:', newAttribute.id);
+            try {
+              const result = await createAttributeValue({
+                attribute_id: newAttribute.id,
+                value
+              });
+              console.log('Value created successfully:', result);
+            } catch (error) {
+              console.error('Error creating value:', error);
+            }
+            // Thêm delay nhỏ giữa các lần tạo
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
+          
+          // Delay thêm trước khi refresh để đảm bảo DB đã cập nhật
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
         
         message.success("Thêm thuộc tính thành công");
@@ -138,7 +173,8 @@ export default function AttributeList() {
       setModalVisible(false);
       form.resetFields();
       setAttributeValues(['']);
-      fetchAttributes();
+      setEditingAttribute(null);
+      await fetchAttributes(); // Đảm bảo refresh data
     } catch (error) {
       console.error("Error saving attribute:", error);
       message.error("Lỗi khi lưu thuộc tính");
@@ -158,9 +194,11 @@ export default function AttributeList() {
   };
 
   const handleValueChange = (index: number, value: string) => {
+    console.log('handleValueChange:', index, value, 'length:', value.length);
     const newValues = [...attributeValues];
     newValues[index] = value;
     setAttributeValues(newValues);
+    console.log('Updated attributeValues:', newValues);
   };
 
   const checkDuplicateValues = (values: string[]) => {
@@ -298,6 +336,7 @@ export default function AttributeList() {
           setModalVisible(false);
           form.resetFields();
           setAttributeValues(['']);
+          setEditingAttribute(null); // Reset editing state
         }}
         onOk={() => form.submit()}
         okText={editingAttribute ? "Cập nhật" : "Thêm"}

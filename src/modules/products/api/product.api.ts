@@ -3,7 +3,7 @@ import type { Product } from "../types/product.type";
 
 export const productApi = {
   getAll: async () => {
-    const response = await axiosInstance.get("/products");
+    const response = await axiosInstance.get(`/products?t=${Date.now()}`);
     return response;
   },
   
@@ -26,10 +26,14 @@ export const productApi = {
   },
   
   update: async (id: number, data: FormData | Partial<Product>) => {
+    console.log('API update call:', id, data);
     const config = data instanceof FormData ? {
       headers: { 'Content-Type': 'multipart/form-data' }
-    } : {};
-    const response = await axiosInstance.put(`/admin/products/${id}`, data, config);
+    } : {
+      headers: { 'Content-Type': 'application/json' }
+    };
+    const response = await axiosInstance.put(`/admin/products/${id}?t=${Date.now()}`, data, config);
+    console.log('API update response:', response.data);
     return response;
   },
   

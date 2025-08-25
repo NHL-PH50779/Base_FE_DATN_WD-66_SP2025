@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Table, Button, Space, Tag, Input, Modal, message, Card, Switch, Tabs } from "antd";
 import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, EyeOutlined, UndoOutlined } from "@ant-design/icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getAllProducts, deleteProduct, toggleActiveProduct, searchProducts, restoreProduct, forceDeleteProduct } from "../services/product.service";
 import { getAllBrands } from "../services/brand.service";
 import { getAllCategories } from "../services/category.service";
+import { ProductListSkeleton } from "../../../components/common/LoadingSkeleton";
 import type { Product } from "../types/product.type";
+import { debounce } from "lodash";
 
 export default function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -20,55 +22,62 @@ export default function ProductList() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     setLoading(true);
     try {
-      // Call products API first
+      // Load products trước để hiển thị nhanh
       const productsResponse = await getAllProducts();
       
-      console.log("Products response:", productsResponse);
-      const allProductData = (productsResponse.data || []).sort((a: Product, b: Product) => (b.id || 0) - (a.id || 0));
+      const allProductData = (productsResponse.data || []).sort((a: Product, b: Product) => {
+        const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+        const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+        return bTime - aTime;
+      });
       
-      // Phân tách sản phẩm active và đã xóa
       const activeProducts = allProductData.filter((p: Product) => !p.deleted_at);
       const deletedProducts = allProductData.filter((p: Product) => p.deleted_at);
       
       setProducts(activeProducts);
       setAllProducts(activeProducts);
       setTrashedProducts(deletedProducts);
+      setLoading(false);
       
-      // Call other APIs
-      const [brandsResponse, categoriesResponse] = await Promise.all([
-        getAllBrands(),
-        getAllCategories()
-      ]);
-      
-      console.log("Brands response:", brandsResponse);
-      console.log("Categories response:", categoriesResponse);
-      setBrands(brandsResponse.data || []);
-      setCategories(categoriesResponse.data || []);
-      console.log("All APIs called successfully");
+      // Load brands và categories sau
+      setTimeout(async () => {
+        try {
+          const [brandsResponse, categoriesResponse] = await Promise.all([
+            getAllBrands(),
+            getAllCategories()
+          ]);
+          setBrands(brandsResponse.data || []);
+          setCategories(categoriesResponse.data || []);
+        } catch (error) {
+          console.error("Error loading brands/categories:", error);
+        }
+      }, 100);
     } catch (error) {
       console.error("Error fetching data:", error);
       message.error("Không thể tải dữ liệu");
-    } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAllData();
   }, []);
   
-  // Detect refresh param from restore
+  // Detect refresh param from create/update/restore
   useEffect(() => {
     const refreshParam = searchParams.get('refresh');
     if (refreshParam) {
+      console.log('Refreshing product list due to refresh param');
       fetchAllData();
       // Clear URL param
       navigate('/admin/products', { replace: true });
     }
   }, [searchParams, navigate]);
+
+
 
   // Tìm kiếm local (không gọi API)
   const handleSearch = (value: string) => {
@@ -112,7 +121,9 @@ export default function ProductList() {
         try {
           await deleteProduct(id);
           message.success("Đã chuyển sản phẩm vào thùng rác");
-          fetchAllData();
+          await fetchAllData();
+          // Scroll to top để thấy sản phẩm vừa xóa
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (error) {
           console.error("Error soft deleting product:", error);
           message.error("Lỗi khi xóa sản phẩm");
@@ -132,7 +143,9 @@ export default function ProductList() {
         try {
           await restoreProduct(id);
           message.success("Khôi phục sản phẩm thành công");
-          fetchAllData();
+          await fetchAllData();
+          // Scroll to top để thấy sản phẩm vừa khôi phục
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (error) {
           console.error("Error restoring product:", error);
           message.error("Lỗi khi khôi phục sản phẩm");
@@ -152,7 +165,8 @@ export default function ProductList() {
         try {
           await forceDeleteProduct(id);
           message.success("Xóa vĩnh viễn sản phẩm thành công");
-          fetchAllData();
+          await fetchAllData();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (error) {
           console.error("Error force deleting product:", error);
           message.error("Lỗi khi xóa vĩnh viễn sản phẩm");
@@ -353,19 +367,25 @@ export default function ProductList() {
             )}
           </Space>
           
-          <Table
-            columns={columns}
-            dataSource={products}
-            rowKey="id"
-            loading={loading}
-            pagination={{ 
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} sản phẩm`
-            }}
-            style={{ borderRadius: 12, overflow: "hidden" }}
-          />
+          {loading ? (
+            <ProductListSkeleton />
+          ) : (
+            <Table
+              columns={columns}
+              dataSource={products}
+              rowKey="id"
+              pagination={{ 
+                pageSize: 10,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} sản phẩm`,
+                pageSizeOptions: ['5', '10', '20', '50']
+              }}
+              scroll={{ y: 500 }}
+              size="small"
+              style={{ borderRadius: 12, overflow: "hidden" }}
+            />
+          )}
         </div>
       )
     }

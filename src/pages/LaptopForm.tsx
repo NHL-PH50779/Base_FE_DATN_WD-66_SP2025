@@ -51,30 +51,70 @@ const LaptopForm = () => {
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
-      // Xử lý giá trị NULL cho giá và số lượng
+      console.log('Form submission:', { isEdit, id, values });
+      
+      // Kiểm tra token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        message.error('Vui lòng đăng nhập lại');
+        return;
+      }
+      
       const processedValues = {
         ...values,
         price: values.price || null,
         stock: values.stock || null
       };
       
-      if (isEdit) {
-        await updateLaptop(Number(id), processedValues);
-        message.success("Cập nhật thành công!");
-      } else {
-        await createLaptop(processedValues);
-        message.success("Tạo sản phẩm thành công!");
-        // Reset form sau khi tạo thành công
-        form.resetFields();
-        form.setFieldsValue({ is_active: true });
-      }
+      console.log('Processed values:', processedValues);
       
-      if (isEdit) {
-        navigate("/admin/laptops");
+      if (isEdit && id) {
+        const response = await updateLaptop(Number(id), processedValues);
+        console.log('Update response:', response.data);
+        
+        message.success(response.data.message || "Cập nhật thành công!");
+        
+        // Clear cache và force refresh
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('cache') || key.includes('products')) {
+            localStorage.removeItem(key);
+          }
+        });
+        
+        // Force refresh trang
+        setTimeout(() => {
+          window.location.href = '/admin/laptops';
+        }, 500);
+      } else {
+        const response = await createLaptop(processedValues);
+        console.log('Create response:', response.data);
+        
+        if (response.data.message?.includes('thành công')) {
+          message.success(response.data.message);
+          form.resetFields();
+          form.setFieldsValue({ is_active: true });
+        } else {
+          message.error(response.data.message || "Tạo sản phẩm thất bại");
+        }
       }
-    } catch (error) {
-      console.error('Error:', error);
-      message.error("Đã xảy ra lỗi");
+    } catch (error: any) {
+      console.error('Form submission error:', {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      if (error.response?.status === 401) {
+        message.error('Phiên làm việc hết hạn, vui lòng đăng nhập lại');
+      } else if (error.response?.status === 422 && error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        Object.keys(errors).forEach(key => {
+          message.error(`${key}: ${errors[key][0]}`);
+        });
+      } else {
+        const errorMessage = error.response?.data?.message || error.message || "Đã xảy ra lỗi";
+        message.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

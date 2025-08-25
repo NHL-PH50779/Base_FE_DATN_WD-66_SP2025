@@ -32,7 +32,13 @@ const TrashedProducts = () => {
         products = [response.data];
       }
       
-      setData(products);
+      // Sắp xếp theo thời gian xóa mới nhất lên đầu
+      const sortedProducts = products.sort((a: any, b: any) => {
+        const aTime = new Date(a.deleted_at || 0).getTime();
+        const bTime = new Date(b.deleted_at || 0).getTime();
+        return bTime - aTime;
+      });
+      setData(sortedProducts);
     } catch (error) {
       console.error('Error fetching trashed products:', error);
       message.error('Lỗi khi tải danh sách sản phẩm đã xóa');
@@ -43,44 +49,54 @@ const TrashedProducts = () => {
 
   const handleRestore = async (id: number) => {
     try {
-      await restoreProduct(id);
+      const response = await restoreProduct(id);
+      console.log('Restore response:', response);
+      
       message.success('Khôi phục sản phẩm thành công');
-      fetchTrashedProducts();
-      setTimeout(() => {
-        navigate('/admin/products?refresh=' + Date.now());
-      }, 1000);
-    } catch (error: any) {
-      // Mock success cho demo
-      message.success('Khôi phục sản phẩm thành công');
-      // Xóa sản phẩm khỏi danh sách hiện tại
+      
+      // Xóa sản phẩm khỏi danh sách thùng rác
       setData(prev => prev.filter(item => item.id !== id));
+      
+      // Clear localStorage cache nếu có
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('products') || key.includes('cache')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Navigate về trang sản phẩm với force refresh
       setTimeout(() => {
-        navigate('/admin/products?refresh=' + Date.now());
-      }, 1000);
+        window.location.href = '/admin/products';
+      }, 500);
+      
+    } catch (error: any) {
+      console.error('Restore error:', error);
+      message.error(error.response?.data?.message || 'Lỗi khi khôi phục sản phẩm');
     }
   };
 
   const handleForceDelete = async (id: number) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/admin/products/${id}`, {
+      const response = await fetch(`http://localhost:8000/api/admin/products/force-delete/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+      
       if (response.ok) {
         message.success('Xóa vĩnh viễn thành công');
-        fetchTrashedProducts();
+        await fetchTrashedProducts();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        throw new Error('API response not ok');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Lỗi khi xóa sản phẩm');
       }
-    } catch (error) {
-      // Mock success cho demo
-      message.success('Xóa vĩnh viễn thành công');
-      // Xóa sản phẩm khỏi danh sách hiện tại
-      setData(prev => prev.filter(item => item.id !== id));
+    } catch (error: any) {
+      console.error('Force delete error:', error);
+      message.error(error.message || 'Lỗi khi xóa vĩnh viễn sản phẩm');
     }
   };
 

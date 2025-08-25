@@ -341,55 +341,61 @@ const ProductForm: React.FC<ProductFormProps> = ({ isEdit = false }) => {
     try {
       setLoading(true);
       
-      // Tạo object data thay vì FormData để tránh lỗi "không có dữ liệu"
       const productData: any = {
         name: values.name,
         description: values.description || '',
-        brand_id: values.brand_id,
-        category_id: values.category_id,
-        is_active: values.is_active ? 1 : 0,
+        brand_id: parseInt(values.brand_id),
+        category_id: parseInt(values.category_id),
+        is_active: values.is_active ?? true,
       };
       
-      // Thêm variants nếu có - format theo database schema
+      // Thêm thumbnail nếu có
+      if (fileList.length > 0 && fileList[0].url) {
+        productData.thumbnail = fileList[0].url;
+      }
+      
+      // Thêm variants nếu có
       if (variants.length > 0) {
-        // Lọc bỏ các variant rỗng (không có SKU)
-        const validVariants = variants.filter(variant => variant.sku && variant.sku.trim() !== '');
-        
+        const validVariants = variants.filter(v => v.sku && v.sku.trim());
         if (validVariants.length > 0) {
-          productData.variants = validVariants.map(variant => ({
-            id: variant.id, // Thêm ID để backend biết cập nhật variant nào
-            sku: variant.sku,
-            Name: variant.Name || variant.name || variant.sku,
-            price: variant.price,
-            stock: variant.stock,
-            attributes: variant.attributes || []
+          productData.variants = validVariants.map(v => ({
+            sku: v.sku,
+            Name: v.Name || v.name || 'Default',
+            price: parseFloat(v.price) || 0,
+            stock: parseInt(v.stock) || 0,
+            quantity: parseInt(v.stock) || 0
           }));
         }
       }
       
-
+      console.log('Sending product data:', productData);
       
       if (isEdit && id) {
-        // Nếu có ảnh mới, gửi kèm thumbnail URL
-        if (fileList.length > 0 && fileList[0].url) {
-          productData.thumbnail = fileList[0].url;
-        }
-        console.log('Updating product with data:', productData); // Debug
         await updateProduct(parseInt(id), productData);
         message.success('Cập nhật sản phẩm thành công');
       } else {
-        // Thêm thumbnail URL nếu có
-        if (fileList.length > 0 && fileList[0].url) {
-          productData.thumbnail = fileList[0].url;
-        }
-        await createProduct(productData);
+        const result = await createProduct(productData);
+        console.log('Create result:', result);
         message.success('Thêm sản phẩm thành công');
       }
       
-      navigate('/admin/products');
-    } catch (error) {
-      console.error("Error saving product:", error);
-      message.error('Lỗi khi lưu sản phẩm');
+      // Navigate ngay lập tức
+      navigate('/admin/products?refresh=true');
+      
+    } catch (error: any) {
+      console.error('Error:', error);
+      
+      let errorMsg = 'Lỗi khi lưu sản phẩm';
+      
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        const firstError = Object.values(errors)[0];
+        errorMsg = Array.isArray(firstError) ? firstError[0] : firstError;
+      } else if (error.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      }
+      
+      message.error(errorMsg);
     } finally {
       setLoading(false);
     }

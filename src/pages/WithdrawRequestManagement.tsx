@@ -166,7 +166,7 @@ const WithdrawRequestManagement = () => {
       key: 'amount',
       render: (amount: number) => (
         <Text strong style={{ color: '#f5222d', fontSize: '14px' }}>
-          {amount.toLocaleString()} VND
+          {new Intl.NumberFormat('vi-VN').format(Number(amount))} VND
         </Text>
       ),
     },
@@ -300,9 +300,10 @@ const WithdrawRequestManagement = () => {
               <DollarOutlined style={{ fontSize: 24, color: '#1890ff' }} />
               <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 20, fontWeight: 600 }}>
-                  {requests.filter(r => r.status === 'approved')
-                    .reduce((sum, r) => sum + Number(r.amount), 0)
-                    .toLocaleString()}
+                  {new Intl.NumberFormat('vi-VN').format(
+                    requests.filter(r => r.status === 'approved')
+                      .reduce((sum, r) => sum + Number(r.amount), 0)
+                  )}
                 </div>
                 <div style={{ color: '#666' }}>Tổng đã rút (VND)</div>
               </div>
@@ -370,7 +371,7 @@ const WithdrawRequestManagement = () => {
               </Descriptions.Item>
               <Descriptions.Item label="Số tiền rút" span={2}>
                 <Text strong style={{ color: '#f5222d', fontSize: '16px' }}>
-                  {selectedRequest.amount.toLocaleString()} VND
+                  {new Intl.NumberFormat('vi-VN').format(Number(selectedRequest.amount))} VND
                 </Text>
               </Descriptions.Item>
               <Descriptions.Item label="Ngân hàng">

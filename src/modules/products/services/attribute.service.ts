@@ -15,41 +15,16 @@ const parseResponse = (response: any) => {
   } else {
     data = response.data;
   }
-  return Array.isArray(data) ? data : (data.data || data);
+  // Trả về data.data nếu có, giữ nguyên structure
+  return data.data || data;
 };
 
 export const getAllAttributes = async () => {
   try {
     const response = await attributeApi.getAllAttributes();
-    const attributes = parseResponse(response);
-    
-    // Load values cho từng attribute
-    const attributesWithValues = await Promise.all(
-      attributes.map(async (attribute: Attribute) => {
-        try {
-          const valuesResponse = await getAllAttributeValues();
-          const allValues = valuesResponse.data || [];
-          
-          // Filter values theo attribute_id
-          const attributeValues = allValues.filter((value: AttributeValue) => 
-            value.attribute_id === attribute.id
-          );
-          
-          return {
-            ...attribute,
-            values: attributeValues
-          };
-        } catch (error) {
-          console.error(`Error loading values for attribute ${attribute.id}:`, error);
-          return {
-            ...attribute,
-            values: []
-          };
-        }
-      })
-    );
-    
-    return { data: attributesWithValues };
+    const data = parseResponse(response);
+    console.log('Raw attributes data:', data); // Debug
+    return { data: Array.isArray(data) ? data : (data.data || []) };
   } catch (error) {
     console.error("Error fetching attributes:", error);
     return { data: [] };

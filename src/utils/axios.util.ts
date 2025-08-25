@@ -9,7 +9,7 @@ interface CustomAxiosRequestConfig extends AxiosRequestConfig {
 }
 
 // Cấu hình API URL cho Laravel backend
-const API_URL = "http://localhost:8000/api"; // Đổi từ 127.0.0.1 sang localhost
+const API_URL = "http://127.0.0.1:8000/api"; // Sử dụng 127.0.0.1 để đồng bộ với backend
 
 export const axiosInstance = axios.create({
   baseURL: API_URL,

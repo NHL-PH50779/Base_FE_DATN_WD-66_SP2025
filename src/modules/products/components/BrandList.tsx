@@ -46,6 +46,40 @@ export default function BrandList() {
     }
   };
 
+  const handleDelete = (id: number) => {
+    Modal.confirm({
+      title: "Xác nhận xóa thương hiệu",
+      content: "Bạn có chắc chắn muốn xóa thương hiệu này?",
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`http://localhost:8000/api/admin/brands/${id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            message.success('Xóa thương hiệu thành công');
+            await fetchBrands();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Lỗi khi xóa thương hiệu');
+          }
+        } catch (error: any) {
+          console.error('Delete brand error:', error);
+          message.error(error.message || 'Lỗi khi xóa thương hiệu');
+        }
+      }
+    });
+  };
+
   // Tìm kiếm local
   const filteredBrands = brands.filter(brand =>
     brand.name.toLowerCase().includes(searchKeyword.toLowerCase())
@@ -69,32 +103,22 @@ export default function BrandList() {
       key: "created_at",
       render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : '-',
     },
-    // Tạm ẩn cột hành động vì backend chưa có API update/delete
-    // {
-    //   title: "Hành động",
-    //   key: "action",
-    //   render: (_: any, record: Brand) => (
-    //     <Space>
-    //       <Button 
-    //         icon={<EditOutlined />}
-    //         size="small"
-    //         disabled
-    //         title="Chức năng sửa chưa khả dụng"
-    //       >
-    //         Sửa
-    //       </Button>
-    //       <Button 
-    //         icon={<DeleteOutlined />}
-    //         danger
-    //         size="small"
-    //         disabled
-    //         title="Chức năng xóa chưa khả dụng"
-    //       >
-    //         Xóa
-    //       </Button>
-    //     </Space>
-    //   ),
-    // },
+    {
+      title: "Hành động",
+      key: "action",
+      render: (_: any, record: Brand) => (
+        <Space>
+          <Button 
+            icon={<DeleteOutlined />}
+            danger
+            size="small"
+            onClick={() => handleDelete(record.id)}
+          >
+            Xóa
+          </Button>
+        </Space>
+      ),
+    },
   ];
 
   return (

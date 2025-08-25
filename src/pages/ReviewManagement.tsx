@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Table,
   Button,
@@ -40,6 +40,7 @@ interface Review {
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
+  order_id?: number;
   user: {
     id: number;
     name: string;
@@ -50,7 +51,87 @@ interface Review {
     name: string;
     thumbnail?: string;
   };
+  order?: {
+    id: number;
+    items: Array<{
+      product: {
+        id: number;
+        name: string;
+        thumbnail?: string;
+      };
+    }>;
+  };
 }
+
+const ProductImage = ({ thumbnail, name, size = 50, style = {} }: { 
+  thumbnail?: string; 
+  name: string; 
+  size?: number;
+  style?: React.CSSProperties;
+}) => {
+  const [imageSrc, setImageSrc] = useState<string>('');
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+    if (thumbnail) {
+      if (thumbnail.startsWith('http')) {
+        setImageSrc(thumbnail);
+      } else {
+        // Xử lý đường dẫn ảnh từ storage
+        const cleanThumbnail = thumbnail.replace(/^products\//, '');
+        setImageSrc(`http://127.0.0.1:8000/storage/products/${cleanThumbnail}`);
+      }
+    } else {
+      setHasError(true);
+    }
+  }, [thumbnail]);
+
+  const handleError = useCallback(() => {
+    console.log('Image load error for:', imageSrc);
+    setHasError(true);
+  }, [imageSrc]);
+
+  if (hasError || !imageSrc) {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          backgroundColor: '#f5f5f5',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 6,
+          border: '1px solid #d9d9d9',
+          fontSize: '10px',
+          color: '#999',
+          textAlign: 'center',
+          ...style
+        }}
+      >
+        📷
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageSrc}
+      alt={name}
+      style={{
+        width: size,
+        height: size,
+        objectFit: 'cover',
+        borderRadius: 6,
+        border: '1px solid #f0f0f0',
+        ...style
+      }}
+      onError={handleError}
+      onLoad={() => console.log('Image loaded successfully:', imageSrc)}
+    />
+  );
+};
 
 const ReviewManagement = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -170,24 +251,60 @@ const ReviewManagement = () => {
     {
       title: 'Sản phẩm',
       key: 'product',
-      render: (record: Review) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar 
-            src={record.product?.thumbnail ? 
-              (record.product.thumbnail.startsWith('http') ? 
-                record.product.thumbnail : 
-                `http://127.0.0.1:8000/storage/products/${record.product.thumbnail}`
-              ) : undefined
-            } 
-            shape="square" 
-          />
-          <div>
-            <div style={{ fontWeight: 500, maxWidth: 200 }}>
-              {record.product?.name || 'Sản phẩm'}
+      render: (record: Review) => {
+        // Nếu có order và nhiều sản phẩm, hiển thị tất cả
+        if (record.order?.items && record.order.items.length > 1) {
+          return (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                {record.order.items.slice(0, 3).map((item, index) => (
+                  <ProductImage
+                    key={index}
+                    thumbnail={item.product?.thumbnail}
+                    name={item.product?.name || 'Sản phẩm'}
+                    size={30}
+                  />
+                ))}
+                {record.order.items.length > 3 && (
+                  <div style={{ 
+                    width: 30, 
+                    height: 30, 
+                    backgroundColor: '#f0f0f0', 
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    color: '#666'
+                  }}>
+                    +{record.order.items.length - 3}
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                Đánh giá cho {record.order.items.length} sản phẩm
+              </div>
+            </div>
+          );
+        }
+        
+        // Hiển thị bình thường cho 1 sản phẩm
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <ProductImage
+              thumbnail={record.product?.thumbnail}
+              name={record.product?.name || 'Sản phẩm'}
+              size={50}
+            />
+            <div>
+              <div style={{ fontWeight: 500, maxWidth: 200 }}>
+                {record.product?.name || 'Sản phẩm'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>ID: {record.product?.id}</div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'Đánh giá',
@@ -446,18 +563,50 @@ const ReviewManagement = () => {
               <Col span={12}>
                 <div style={{ marginBottom: 16 }}>
                   <Text strong>Sản phẩm:</Text>
-                  <div style={{ marginTop: 4 }}>
-                    <Avatar 
-                      src={selectedReview.product?.thumbnail ? 
-                        (selectedReview.product.thumbnail.startsWith('http') ? 
-                          selectedReview.product.thumbnail : 
-                          `http://127.0.0.1:8000/storage/products/${selectedReview.product.thumbnail}`
-                        ) : undefined
-                      } 
-                      shape="square" 
-                      style={{ marginRight: 8 }} 
-                    />
-                    {selectedReview.product?.name || 'Sản phẩm'}
+                  <div style={{ marginTop: 8 }}>
+                    {selectedReview.order?.items && selectedReview.order.items.length > 1 ? (
+                      <div>
+                        <div style={{ marginBottom: 12, fontSize: '14px', color: '#666' }}>
+                          Đánh giá cho {selectedReview.order.items.length} sản phẩm:
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                          {selectedReview.order.items.map((item, index) => (
+                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, backgroundColor: '#f9f9f9', borderRadius: 6 }}>
+                              <ProductImage
+                                thumbnail={item.product?.thumbnail}
+                                name={item.product?.name || 'Sản phẩm'}
+                                size={40}
+                              />
+                              <div>
+                                <div style={{ fontWeight: 500, fontSize: '14px', maxWidth: 150 }}>
+                                  {item.product?.name || 'Sản phẩm'}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#666' }}>
+                                  ID: {item.product?.id}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <ProductImage
+                          thumbnail={selectedReview.product?.thumbnail}
+                          name={selectedReview.product?.name || 'Sản phẩm'}
+                          size={80}
+                          style={{ borderRadius: 8 }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 500, fontSize: '16px' }}>
+                            {selectedReview.product?.name || 'Sản phẩm'}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>
+                            ID sản phẩm: {selectedReview.product?.id}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </Col>
